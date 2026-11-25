@@ -428,7 +428,9 @@ Whether a stated equation is true. `check_identity` judges ONE equation the user
         """\
 To remove a cyclic coordinate (Routh reduction), call `routh_reduce` with the Lagrangian and the
    coordinates the user names. Each momentum stays the symbol p_{c} in R: never give it a value or rename
-   it (E = -p_t) unless the user asks; that is their `substitute`.\
+   it (E = -p_t) unless the user asks; that is their `substitute`. For the radial effective potential of
+   geodesics call `effective_potential`; its normalisation g(v,v) = kappa (-1 timelike, 0 null) is the
+   user's: ask which, never pick it.\
 """,
     ),
 }
@@ -446,7 +448,7 @@ GROUP_ROUTER: dict[str, str] = {
     "approximation": "approximating an expression (Pade, Chebyshev, Fourier, Laurent, large x, small parameter, large sums, a number by fractions): `approximation`.",
     "units": "units of an equation, or the unit of a quantity (name it in `unknown`): `check_units` (name a symbol E as En); dimensionless groups: `dimensional_analysis`.",
     "identity": "`check_identity`: is A = B true?",
-    "reduction": "remove a cyclic coordinate of a Lagrangian (Routh reduction): `routh_reduce`.",
+    "reduction": "remove a cyclic coordinate of a Lagrangian (Routh reduction): `routh_reduce`; radial effective potential of geodesics: `effective_potential`.",
 }
 
 GROUP_SUMMARY: dict[str, str] = {
@@ -462,7 +464,7 @@ GROUP_SUMMARY: dict[str, str] = {
     "identity": "is an equation an identity",
     "units": "units and dimensions: dimensional consistency and dimensionless groups",
     "approximation": "approximations: Pade, Chebyshev, Fourier, Laurent, asymptotic and perturbation expansions, large sums, accuracy targets",
-    "reduction": "Routh reduction: remove cyclic coordinates of a Lagrangian by holding their momenta fixed",
+    "reduction": "Routh reduction (remove cyclic coordinates by holding their momenta fixed) and the radial effective potential of geodesics",
 }
 
 GROUP_TOOLS: dict[str, tuple[str, ...]] = {
@@ -486,7 +488,7 @@ GROUP_TOOLS: dict[str, tuple[str, ...]] = {
     "units": ("check_units", "dimensional_analysis"),
     "approximation": ("approximation",),
     "identity": ("check_identity",),
-    "reduction": ("routh_reduce",),
+    "reduction": ("routh_reduce", "effective_potential"),
 }
 
 GROUP_KEYWORDS: dict[str, str] = {
@@ -502,7 +504,7 @@ GROUP_KEYWORDS: dict[str, str] = {
     "approximation": "approximat|pad[eé]|chebyshev|fourier|legendre|laurent|maclaurin|spline|interpolat|continued fraction|convergent|asymptotic|large[- ]?x|large distance|far[- ]field|leading[- ]order|leading term|to (first|second|third|fourth) order|small (parameter|x|angle)|residue|\\bpole\\b|\\blimit\\b|expansion|euler[- ]maclaurin|laplace'?s? method|accurate to|decimal places?|tolerance|sums? for large",
     "identity": "is (it|that|this) (true|correct|right)|confirm that|does .{1,80}\\bhold\\b|\\bidentit(y|ies)\\b|is .{1,60} equal to|\\bfor (every|all|any)\\b|\\b(right|correct|true)\\?",
     "units": "\\bunits?\\b|dimension|dimensionless|buckingham|\\bsi\\b|metre|meter|newton|joule|kilogram|nondimensional",
-    "reduction": "\\brouth|\\bcyclic coordinates?\\b",
+    "reduction": "\\brouth|\\bcyclic coordinates?\\b|effective[- ]potential|radial equation",
 }
 
 

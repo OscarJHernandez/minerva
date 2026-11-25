@@ -5595,5 +5595,219 @@
     "rows": {
       "cumulant_N:3": "\\kappa_{3}(N) = \\left(\\mathrm{e}^{\\beta eps} + 1\\right) \\mathrm{e}^{- \\beta \\left(eps - \\mu\\right)}"
     }
+  },
+  "effective_potential": {
+    "data": {
+      "diagnostic": null,
+      "reading": {
+        "format": "latex",
+        "normalizations": []
+      },
+      "status": "ok",
+      "reason": null,
+      "coordinates": ["t", "r", "theta", "phi"],
+      "cyclic": ["t", "phi"],
+      "radial": "r",
+      "fixed": ["\\theta = \\frac{\\pi}{2}"],
+      "time": "s",
+      "metric_latex": "\\left[\\begin{matrix}\\frac{2 M}{r} - 1 & 0 & 0 & 0\\\\0 & \\frac{1}{- \\frac{2 M}{r} + 1} & 0 & 0\\\\0 & 0 & r^{2} & 0\\\\0 & 0 & 0 & r^{2} \\sin^{2}{\\left(\\theta \\right)}\\end{matrix}\\right]",
+      "lagrangian_latex": "\\frac{\\dot{\\phi}^{2} r^{2}}{2} + \\frac{\\dot{r}^{2}}{2 \\left(- \\frac{2 M}{r} + 1\\right)} + \\frac{\\dot{t}^{2} \\left(\\frac{2 M}{r} - 1\\right)}{2}",
+      "normalisation_latex": "g(v, v) = -1",
+      "held_fixed": [
+        {
+          "coordinate": "t",
+          "symbol_latex": "p_{t}",
+          "latex": "p_{t} = \\dot{t} \\left(\\frac{2 M}{r} - 1\\right)",
+          "reason": "conserved because t is cyclic (L does not depend on it); verified on the equations of motion",
+          "verification": {
+            "symbolic_zero": true,
+            "numeric_points_checked": 20,
+            "numeric_points_agreed": 20,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 0,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "probe_outcome": "not_run",
+            "passed": true,
+            "note": "d/dt of the quantity, evaluated on the equations of motion, is zero"
+          }
+        },
+        {
+          "coordinate": "phi",
+          "symbol_latex": "p_{\\phi}",
+          "latex": "p_{\\phi} = \\dot{\\phi} r^{2}",
+          "reason": "conserved because phi is cyclic (L does not depend on it); verified on the equations of motion",
+          "verification": {
+            "symbolic_zero": true,
+            "numeric_points_checked": 20,
+            "numeric_points_agreed": 20,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 0,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "probe_outcome": "not_run",
+            "passed": true,
+            "note": "d/dt of the quantity, evaluated on the equations of motion, is zero"
+          }
+        }
+      ],
+      "routhian_latex": "- \\frac{p_{\\phi}^{2}}{2 r^{2}} + \\frac{p_{t}^{2} r}{2 \\left(- 2 M + r\\right)} + \\frac{r \\dot{r}^{2}}{2 \\left(- 2 M + r\\right)}",
+      "normalisation_equation_latex": "\\frac{p_{\\phi}^{2}}{r^{2}} - \\frac{2 p_{t}^{2} r}{- 4 M + 2 r} + \\frac{2 r \\dot{r}^{2}}{- 4 M + 2 r} = -1",
+      "veff_latex": "V_{\\mathrm{eff}}\\left(r\\right) = \\frac{\\left(- 2 M + r\\right) \\left(p_{\\phi}^{2} + r^{2}\\right)}{r^{3}}",
+      "result_latex": "\\dot{r}^{2} + \\frac{\\left(- 2 M + r\\right) \\left(p_{\\phi}^{2} + r^{2}\\right)}{r^{3}} = p_{t}^{2}",
+      "restrictions_latex": ["- 2 M + r \\neq 0"],
+      "restrictions_complete": true,
+      "consistency": [
+        {
+          "coordinate": "theta",
+          "acceleration_latex": "0",
+          "symbolic": true,
+          "numeric": {
+            "symbolic_zero": true,
+            "numeric_points_checked": 6,
+            "numeric_points_agreed": 6,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 0,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "probe_outcome": "not_run",
+            "passed": true,
+            "note": "the acceleration of the fixed coordinate at its value with zero velocity"
+          }
+        }
+      ],
+      "checks": {
+        "routhian": {
+          "euler_lagrange": [
+            {
+              "symbolic_zero": false,
+              "numeric_points_checked": 6,
+              "numeric_points_agreed": 6,
+              "numeric_points_skipped": 0,
+              "numeric_points_probed": 0,
+              "probe_kind": null,
+              "probes_cut_short": false,
+              "probe_outcome": "not_run",
+              "passed": true,
+              "note": "the Euler-Lagrange residual of R, by numerical differentiation along motions of L, vanishes"
+            }
+          ],
+          "reconstruction": [
+            {
+              "symbolic_zero": false,
+              "numeric_points_checked": 6,
+              "numeric_points_agreed": 6,
+              "numeric_points_skipped": 0,
+              "numeric_points_probed": 0,
+              "probe_kind": null,
+              "probes_cut_short": false,
+              "probe_outcome": "not_run",
+              "passed": true,
+              "note": "-dR/dp (central difference) and the velocity formula return the sampled velocity"
+            },
+            {
+              "symbolic_zero": false,
+              "numeric_points_checked": 6,
+              "numeric_points_agreed": 6,
+              "numeric_points_skipped": 0,
+              "numeric_points_probed": 0,
+              "probe_kind": null,
+              "probes_cut_short": false,
+              "probe_outcome": "not_run",
+              "passed": true,
+              "note": "-dR/dp (central difference) and the velocity formula return the sampled velocity"
+            }
+          ],
+          "definition": {
+            "symbolic_zero": false,
+            "numeric_points_checked": 6,
+            "numeric_points_agreed": 6,
+            "numeric_points_skipped": 0,
+            "numeric_points_probed": 0,
+            "probe_kind": null,
+            "probes_cut_short": false,
+            "probe_outcome": "not_run",
+            "passed": true,
+            "note": "R equals L - sum p_c c_dot at the sample (p_c: dL/dc_dot numerically)"
+          },
+          "symbolic": true,
+          "symbolic_note": "the Euler-Lagrange expressions of R vanish symbolically on the accelerations of L with the cyclic velocities replaced"
+        },
+        "normalisation": {
+          "symbolic_zero": false,
+          "numeric_points_checked": 6,
+          "numeric_points_agreed": 6,
+          "numeric_points_skipped": 0,
+          "numeric_points_probed": 0,
+          "probe_kind": null,
+          "probes_cut_short": false,
+          "probe_outcome": "not_run",
+          "passed": true,
+          "note": "r_dot² + V_eff - alpha p² vanishes at points of the whole system on g(v, v) = κ (momenta by differences of the full Lagrangian)"
+        },
+        "radial_acceleration": {
+          "symbolic_zero": false,
+          "numeric_points_checked": 6,
+          "numeric_points_agreed": 6,
+          "numeric_points_skipped": 0,
+          "numeric_points_probed": 0,
+          "probe_kind": null,
+          "probes_cut_short": false,
+          "probe_outcome": "not_run",
+          "passed": true,
+          "note": "the radial acceleration of the full geodesic equations equals -V_eff'/2 at fixed momenta"
+        },
+        "symbolic": true,
+        "symbolic_note": "2 r̈ + V_eff' vanishes symbolically along the motion of the Routhian once r_dot² is replaced by the radial equation"
+      },
+      "verification": {
+        "symbolic_zero": true,
+        "numeric_points_checked": 12,
+        "numeric_points_agreed": 12,
+        "numeric_points_skipped": 0,
+        "numeric_points_probed": 0,
+        "probe_kind": null,
+        "probes_cut_short": false,
+        "probe_outcome": "not_run",
+        "passed": true,
+        "note": "r_dot² + V_eff = alpha p² on g(v, v) = κ at points of the whole system, and the radial acceleration"
+      },
+      "convention": "Geodesics are the motions of L = g(v, v)/2 with an affine parameter. R = L - Σ p_c ċ is the Routhian of the restricted Lagrangian (the sign in which it acts as a Lagrangian). The normalisation g(v, v) = κ is the user's: κ = -1 is timelike and κ = 0 null in a signature (-, +, +, +). The momenta keep the names p_c shown; naming one E or L is the user's own step.",
+      "stages": {
+        "geodesics": 543,
+        "consistency": 1,
+        "reduction": 132,
+        "verify": 5,
+        "symbolic": 20
+      },
+      "message": "The radial equation of the geodesics with g(v, v) = -1: r_dot^2 + V_eff(r) = p_t^2. Proved: the equatorial restriction and the radial equation are symbolic zeros, and checked numerically against the full geodesic equations.",
+      "duration_ms": 2686,
+      "request": {
+        "coordinates": ["t", "r", "theta", "phi"],
+        "metric": [
+          ["-\\left(1-\\frac{2M}{r}\\right)", "0", "0", "0"],
+          ["0", "\\left(1-\\frac{2M}{r}\\right)^{-1}", "0", "0"],
+          ["0", "0", "r^2", "0"],
+          ["0", "0", "0", "r^2\\sin^2\\theta"]
+        ],
+        "format": "latex",
+        "assumptions": {
+          "M": ["positive"],
+          "r": ["positive"]
+        },
+        "cyclic": ["t", "phi"],
+        "radial": "r",
+        "fixed": {
+          "theta": "\\frac{\\pi}{2}"
+        },
+        "normalisation": "-1"
+      }
+    },
+    "keys": ["veff", "held:t", "held:phi"],
+    "rows": {
+      "veff": "V_{\\mathrm{eff}}\\left(r\\right) = \\frac{\\left(- 2 M + r\\right) \\left(p_{\\phi}^{2} + r^{2}\\right)}{r^{3}}",
+      "held:t": "p_{t} = \\dot{t} \\left(\\frac{2 M}{r} - 1\\right)",
+      "held:phi": "p_{\\phi} = \\dot{\\phi} r^{2}"
+    }
   }
 }

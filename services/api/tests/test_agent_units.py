@@ -229,47 +229,51 @@ def test_simplify_tool_takes_a_goal_and_the_other_tools_do_not(ctx: ToolContext)
 def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
     from minerva_api.agent.tools import TOOLS
 
-    assert set(TOOLS) == {
-        "search_handbook",
-        "get_entry",
-        "load_tools",  # asks for more tools; computes nothing
-        "simplify",
-        "check_identity",  # a verdict on one stated equation; computes nothing of its own
-        "differentiate",
-        "time_derivative",
-        "series",
-        "integrate",
-        "matrix_calculus",
-        "geometry",
-        "vector_calculus",
-        "electromagnetism",
-        "distribution",
-        "find_identities",
-        "substitute",
-        "rewrite_part",
-        "isolate_variable",
-        "tensor_canonicalize",
-        "solve_polynomial",
-        "analyze_lagrangian",
-        "routh_reduce",  # Routh reduction by cyclic coordinates the caller names
-        "expand_motion",
-        "perturbation_solve",
-        "search_invariants",
-        "find_conserved_quantities",
-        "integrate_motion",
-        "ode_analyze",
-        "ode_solve_symbolic",
-        "ode_solve_numerical",
-        "variation",
-        "creative_telescoping",
-        "approximation",
-        "dimensional_analysis",
-        "check_units",
-        "sums",
-        "expectation",
-        "statistical_model",
-        "statistical_mechanics",
-    }
+    assert (
+        set(TOOLS)
+        == {
+            "search_handbook",
+            "get_entry",
+            "load_tools",  # asks for more tools; computes nothing
+            "simplify",
+            "check_identity",  # a verdict on one stated equation; computes nothing of its own
+            "differentiate",
+            "time_derivative",
+            "series",
+            "integrate",
+            "matrix_calculus",
+            "geometry",
+            "vector_calculus",
+            "electromagnetism",
+            "distribution",
+            "find_identities",
+            "substitute",
+            "rewrite_part",
+            "isolate_variable",
+            "tensor_canonicalize",
+            "solve_polynomial",
+            "analyze_lagrangian",
+            "routh_reduce",  # Routh reduction by cyclic coordinates the caller names
+            "effective_potential",  # radial equation of geodesics; the normalisation is the user's number
+            "expand_motion",
+            "perturbation_solve",
+            "search_invariants",
+            "find_conserved_quantities",
+            "integrate_motion",
+            "ode_analyze",
+            "ode_solve_symbolic",
+            "ode_solve_numerical",
+            "variation",
+            "creative_telescoping",
+            "approximation",
+            "dimensional_analysis",
+            "check_units",
+            "sums",
+            "expectation",
+            "statistical_model",
+            "statistical_mechanics",
+        }
+    )
     for tool in TOOLS.values():
         assert tool.schema()["function"]["parameters"]["type"] == "object"
 

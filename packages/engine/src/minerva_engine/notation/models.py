@@ -57,6 +57,11 @@ class InputCode(StrEnum):
     # Routh reduction holds the momentum of a cyclic coordinate `c` fixed as the symbol `p_{c}`; a Lagrangian
     # that already uses that name for something else is refused, never renamed (`routh.py`).
     MOMENTUM_SYMBOL_CLASH = "momentum_symbol_clash"
+    # `effective_potential`: a restriction to a plane (`theta = pi/2`) is refused unless the restricted motion is
+    # shown to solve the equation of the fixed coordinate (computation, never an assumption); and the
+    # normalisation `g(v, v) = kappa` is the user's number, refused when it cannot be read as one.
+    RESTRICTION_NOT_CONSISTENT = "restriction_not_consistent"
+    NORMALISATION_UNREADABLE = "normalisation_unreadable"
 
 
 class NormalizationKind(StrEnum):

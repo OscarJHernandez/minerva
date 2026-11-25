@@ -14,6 +14,7 @@ from .creative_telescoping.models import TelescopingInput, TelescopingResult
 from .differentiate import DifferentiateResult, DiffVariable
 from .discovery import BUDGETS, DiscoveryReport, Pins
 from .distributions.models import DistributionInput, DistributionResult
+from .effective_potential import EffectivePotentialInput, EffectivePotentialReport
 from .expansion import ExpansionReport
 from .geometry import MAX_DIMENSION, GeometryInput, GeometryResult
 from .identity_check import IdentityResult
@@ -836,6 +837,18 @@ class Engine:
             status, message = self._failure_status(outcome.outcome)
             return RouthReport(status=status, message=message, duration_ms=ms)
         report = RouthReport(**outcome.value)
+        report.duration_ms = ms
+        return report
+
+    def effective_potential(self, request: EffectivePotentialInput) -> EffectivePotentialReport:
+        """The radial effective potential of geodesics as one verified result: the restriction to a plane is
+        shown consistent, the cyclic coordinates are Routh-reduced, and the user's normalisation g(v, v) = kappa
+        gives `r_dot^2 + V_eff(r) = alpha p^2`, checked against the full geodesic equations."""
+        outcome, ms = self._run("effective_potential", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return EffectivePotentialReport(status=status, message=message, duration_ms=ms)
+        report = EffectivePotentialReport(**outcome.value)
         report.duration_ms = ms
         return report
 

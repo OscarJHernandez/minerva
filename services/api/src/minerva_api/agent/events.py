@@ -59,6 +59,7 @@ class Card(BaseModel):
         "expansion",
         "perturbation",
         "routh",
+        "effective_potential",
         "invariants",
         "discovery",
         "motion",
