@@ -881,6 +881,84 @@ EXTRA_SCRIPTS["kepler-constant-then-its-units"] = {
         ],
     },
 }
+
+# Issue 131: the whole Schwarzschild sequence. `SCHWARZSCHILD_METRIC` is the geometry call every turn of it repeats.
+SCHWARZSCHILD_METRIC: dict[str, Any] = {
+    "coordinates": ["t", "r", "theta", "phi"],
+    "metric": [
+        ["-(1-2*M/r)", "0", "0", "0"],
+        ["0", "1/(1-2*M/r)", "0", "0"],
+        ["0", "0", "r^2", "0"],
+        ["0", "0", "0", "r^2*sin(theta)^2"],
+    ],
+    "format": "text",
+}
+SEQ_COORDINATES = ["t", "r", "theta", "phi"]
+SEQ_LAGRANGIAN = {
+    "lagrangian": SCHWARZSCHILD_L,
+    "coordinates": SEQ_COORDINATES,
+    "time": "s",
+    "format": "text",
+}
+GAMMA_ROW = r"\Gamma^{r}{}_{t t} = \frac{M (r - 2 M)}{r^{3}}"
+GAMMA_ROW_WRONG = r"\Gamma^{r}{}_{t t} = \frac{M (r - 2 M)}{r^{2}}"
+CHARGE_ROW = r"Q_{2} = r^{2} \dot{\phi} \sin^{2}{\left(\theta \right)}"
+CHARGE_ROW_WRONG = r"Q_{2} = r^{2} \dot{\phi} \sin{\left(\theta \right)}"
+
+
+def schwarzschild_turns(gamma: str = GAMMA_ROW, charge: str = CHARGE_ROW) -> list[Any]:
+    """The ideal trajectory; the restated Christoffel row and charge are parameters so that wrong twins reuse it."""
+    return [
+        call("geometry", {**SCHWARZSCHILD_METRIC, "quantities": ["inverse_metric", "determinant"]}),
+        say("The inverse metric is diagonal and the determinant is $-r^4 \\sin^2\\theta$."),
+        call("geometry", {**SCHWARZSCHILD_METRIC, "quantities": ["christoffel"]}),
+        say(f"One of the verified components is $$ {gamma} $$ and the others are in the card."),
+        call("analyze_lagrangian", SEQ_LAGRANGIAN),
+        say(
+            "The card gives the four equations of motion. t and phi are cyclic, so their momenta "
+            "are conserved, and the energy function is. Those are the symmetries it tested."
+        ),
+        call(
+            "geometry",
+            {**SCHWARZSCHILD_METRIC, "quantities": ["killing_vectors", "geodesic_constants"]},
+        ),
+        say(
+            f"The charge of the rotation about the axis is $$ {charge} $$ Within the family "
+            "searched, those are the Killing vectors found."
+        ),
+        call("routh_reduce", ROUTH_CALL),
+        say(
+            "The Routhian holds the momentum of t fixed as the symbol $p_{t}$. It is valid only "
+            "where $r \\neq 2M$, because the reduction divides by $1 - 2M/r$."
+        ),
+        call("find_conserved_quantities", SEQ_LAGRANGIAN),
+        say(
+            "The search reduced t and phi first and found the momenta of t and phi and the energy "
+            "function, which were already known. The total angular momentum $J^2$ is not in the "
+            "families that were searched, so this does not show there are no others."
+        ),
+    ]
+
+
+SEQ = "schwarzschild-sequence-metric-to-discovery"
+SEQ_SCRIPTS: dict[str, dict[str, Any]] = {
+    SEQ: {
+        "ideal": schwarzschild_turns(),
+        "adversarial": {
+            # a Christoffel row restated with a wrong power of r: the checker must not link it to the verified row, so
+            # the pinned `same_indexed_label` mark is not found (a wrong charge twin is the test below)
+            FailureClass.CLAIM_CHECKER: schwarzschild_turns(gamma=GAMMA_ROW_WRONG),
+            # the last turn claims completeness of the search
+            FailureClass.MODEL_HONESTY: [
+                *schwarzschild_turns()[:-1],
+                say(
+                    "These are all the conserved quantities of the geodesics; the search is complete."
+                ),
+            ],
+        },
+    },
+}
+EXTRA_SCRIPTS.update(SEQ_SCRIPTS)
 SCRIPTS.update(EXTRA_SCRIPTS)
 
 IDEAL = [(case_id, s["ideal"]) for case_id, s in SCRIPTS.items()]
@@ -941,6 +1019,16 @@ def test_a_follow_up_is_scored_on_the_state_the_first_turn_really_produced(
     assert any("result_id=r1" in str(x.get("content", "")) for x in turn_two)
     last = llm.seen[-1]
     assert any("Inherited from @r1" in str(x.get("content", "")) for x in last)
+
+
+def test_a_charge_restated_with_a_dropped_factor_does_not_meet_the_pinned_mark(
+    ctx: ToolContext,
+) -> None:
+    """The wrong twin of the charge mark of the Schwarzschild sequence: the pin is for the verified form only."""
+    result = run(SEQ, schwarzschild_turns(charge=CHARGE_ROW_WRONG), ctx)
+    assert not result.passed
+    assert result.failure_class is FailureClass.CLAIM_CHECKER, (result.failure_class, result.notes)
+    assert any("turn 4" in n for n in result.notes)
 
 
 def test_the_digest_of_the_original_cases_did_not_change() -> None:

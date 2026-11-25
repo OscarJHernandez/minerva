@@ -8,6 +8,7 @@ import mpmath as mp
 import sympy as sp
 
 from ..discovery import Pins
+from ..effective_potential import EffectivePotentialInput
 from ..latexparse import parse_latex
 from ..service import Engine
 from .core import Problem, verdict
@@ -263,6 +264,91 @@ def _schwarzschild_geodesic_constants(engine: Engine) -> tuple[str, str]:
     return verdict("correct", True, ok, "E, L and g(v, v) vs the hand-written Killing constants")
 
 
+def _schwarzschild_effective_potential(engine: Engine) -> tuple[str, str]:
+    """Radial effective potential of timelike Schwarzschild geodesics (issue #207).
+
+    Carroll, Spacetime and Geometry, section 5.4, and Wald, General Relativity, section 6.3: with E = -p_t and
+    L = p_phi on the equatorial plane, `r_dot^2 + (1 - 2M/r)(1 + L^2/r^2) = E^2`. Written here by hand, together
+    with the textbook consequence that the innermost stable circular orbit is at r = 6M with L^2 = 12 M^2, where
+    the potential and its first two derivatives give V = 8/9, V' = 0, V'' = 0 (M = 1): a check that shares nothing
+    with the construction.
+    """
+    f = r"\left(1-\frac{2M}{r}\right)"
+    metric = [
+        [f"-{f}", "0", "0", "0"],
+        ["0", f"{f}^{{-1}}", "0", "0"],
+        ["0", "0", "r^2", "0"],
+        ["0", "0", "0", r"r^2\sin^2\theta"],
+    ]
+    report = engine.effective_potential(
+        EffectivePotentialInput(
+            coordinates=["t", "r", "theta", "phi"],
+            metric=metric,
+            assumptions={"M": ["positive"], "r": ["positive"]},
+            cyclic=["t", "phi"],
+            radial="r",
+            fixed={"theta": r"\frac{\pi}{2}"},
+            normalisation="-1",
+        )
+    )
+    if report.status.value != "ok" or not report.veff_latex or not report.result_latex:
+        return verdict("correct", False, None, f"status {report.status.value}")
+    m, r, p_phi, p_t, r_dot = sp.symbols("M r p_phi p_t r_dot")
+
+    def plain(latex: str) -> sp.Expr:
+        value = parse_latex(latex)
+        return value.xreplace({s: sp.Symbol(s.name) for s in value.free_symbols})
+
+    potential = plain(report.veff_latex.split("=", 1)[1])
+    expected = (1 - 2 * m / r) * (1 + p_phi**2 / r**2)
+    left, right = (plain(side) for side in report.result_latex.split("=", 1))
+    form = sp.simplify(potential - expected) == 0 and sp.simplify(right - p_t**2) == 0
+    equation = sp.simplify(left - (r_dot**2 + expected)) == 0
+    at_isco = potential.subs({m: 1, p_phi: sp.sqrt(12)})
+    isco = (
+        sp.simplify(at_isco.subs(r, 6) - sp.Rational(8, 9)) == 0
+        and sp.simplify(sp.diff(at_isco, r).subs(r, 6)) == 0
+        and sp.simplify(sp.diff(at_isco, r, 2).subs(r, 6)) == 0
+    )
+    return verdict(
+        "correct",
+        True,
+        form and equation and isco,
+        "V_eff and the radial equation vs the hand-written form, and the circular orbit at r = 6M",
+    )
+
+
+def _tilted_plane_refused(engine: Engine) -> tuple[str, str]:
+    """A plane that a geodesic does not stay on is refused, never assumed (issue #207).
+
+    In the Schwarzschild metric theta = pi/3 is not a stationary value of the polar angle: the polar equation is
+    theta_ddot = sin(theta) cos(theta) phi_dot^2 - 2 r_dot theta_dot / r, which is nonzero at theta = pi/3 with
+    phi_dot nonzero (Carroll, Spacetime and Geometry, section 5.4: only the equator is consistent)."""
+    f = r"\left(1-\frac{2M}{r}\right)"
+    report = engine.effective_potential(
+        EffectivePotentialInput(
+            coordinates=["t", "r", "theta", "phi"],
+            metric=[
+                [f"-{f}", "0", "0", "0"],
+                ["0", f"{f}^{{-1}}", "0", "0"],
+                ["0", "0", "r^2", "0"],
+                ["0", "0", "0", r"r^2\sin^2\theta"],
+            ],
+            assumptions={"M": ["positive"], "r": ["positive"]},
+            cyclic=["t", "phi"],
+            radial="r",
+            fixed={"theta": r"\frac{\pi}{3}"},
+            normalisation="-1",
+        )
+    )
+    return verdict(
+        "refused",
+        report.status.value == "ok",
+        None,
+        f"status {report.status.value}, reason {report.reason}",
+    )
+
+
 PROBLEMS: list[Problem] = [
     Problem(
         "duffing-frequency-shift",
@@ -318,6 +404,25 @@ PROBLEMS: list[Problem] = [
         _schwarzschild_geodesic_constants,
         oracle="closed_form",
         evidence="symbolic_proof",
+    ),
+    Problem(
+        "effective-potential-schwarzschild-timelike",
+        "mechanics",
+        "Carroll, Spacetime and Geometry, section 5.4; Wald, General Relativity, section 6.3 (radial equation of "
+        "timelike geodesics; the circular orbit at r = 6M)",
+        "correct",
+        _schwarzschild_effective_potential,
+        oracle="closed_form",
+        evidence="symbolic_proof",
+    ),
+    Problem(
+        "effective-potential-tilted-plane-refused",
+        "mechanics",
+        "Carroll, Spacetime and Geometry, section 5.4 (the equatorial plane is the one consistent restriction)",
+        "refused",
+        _tilted_plane_refused,
+        oracle="closed_form",
+        evidence="refusal",
     ),
     Problem(
         "discovery-isotropic-oscillator",

@@ -242,6 +242,26 @@
       "outcome": "correct"
     },
     {
+      "id": "effective-potential-schwarzschild-timelike",
+      "category": "mechanics",
+      "source": "Carroll, Spacetime and Geometry, section 5.4; Wald, General Relativity, section 6.3 (radial equation of timelike geodesics; the circular orbit at r = 6M)",
+      "expected": "correct",
+      "oracle": "closed_form",
+      "evidence": "symbolic_proof",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "effective-potential-tilted-plane-refused",
+      "category": "mechanics",
+      "source": "Carroll, Spacetime and Geometry, section 5.4 (the equatorial plane is the one consistent restriction)",
+      "expected": "refused",
+      "oracle": "closed_form",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
       "id": "discovery-isotropic-oscillator",
       "category": "mechanics",
       "source": "Landau and Lifshitz, Mechanics, section 15 (the isotropic oscillator has 2n - 1 independent constants)",

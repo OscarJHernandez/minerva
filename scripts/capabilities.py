@@ -35,6 +35,7 @@ from minerva_engine import (
 )
 from minerva_engine.differentiate import DiffVariable
 from minerva_engine.discovery import Pins
+from minerva_engine.effective_potential import EffectivePotentialInput
 from minerva_engine.matrix import MatrixCalculusInput
 from minerva_engine.models import ExpressionInput, TensorInput
 from minerva_engine.ode import OdeAnalyzeInput, OdeNumericInput, OdeSolveInput
@@ -638,6 +639,75 @@ def run_routh(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[s
             _source_line(spec, "Lagrangian", reading=r.lagrangian_latex),
             {"label": "Coordinates", "text": ", ".join(spec["coordinates"])},
             {"label": "Removed", "text": ", ".join(spec["cyclic"])},
+        ],
+        outputs,
+        checks,
+        notes,
+    )
+
+
+def run_effective_potential(
+    spec: dict[str, Any], engine: Engine, kb: KnowledgeBase
+) -> dict[str, Any]:
+    r = engine.effective_potential(
+        EffectivePotentialInput(
+            coordinates=spec["coordinates"],
+            metric=spec["metric"],
+            format=_syntax(spec),
+            assumptions=spec.get("assumptions") or {},
+            cyclic=spec["cyclic"],
+            radial=spec["radial"],
+            fixed=spec.get("fixed") or {},
+            normalisation=str(spec["normalisation"]),
+        )
+    )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok" and r.result_latex:
+        outputs.append({"label": "Radial equation", "latex": r.result_latex})
+        if r.veff_latex:
+            outputs.append({"label": "Effective potential", "latex": r.veff_latex})
+        for held in r.held_fixed:
+            outputs.append({"label": "Held fixed", "latex": held.latex, "text": held.reason})
+        if r.restrictions_latex:
+            outputs.append({"label": "Valid where", "latex": r", \\; ".join(r.restrictions_latex)})
+        for c in r.consistency:
+            if c.numeric is not None:
+                checks.append(
+                    f"{c.coordinate} stays at its value (acceleration there is "
+                    f"{'exactly zero' if c.symbolic else 'not shown to be exactly zero'}): "
+                    f"{c.numeric.numeric_points_agreed} of {c.numeric.numeric_points_checked} points"
+                )
+        for label, v in (
+            (
+                "r_dot^2 + V_eff - alpha p^2 on g(v, v) = kappa at points of the whole system",
+                r.checks.normalisation,
+            ),
+            (
+                "radial acceleration of the full geodesic equations = -V_eff'/2",
+                r.checks.radial_acceleration,
+            ),
+        ):
+            if v is not None:
+                checks.append(
+                    f"{label}: {v.numeric_points_agreed} of {v.numeric_points_checked} points"
+                )
+        checks.append(f"symbolic leg (reported, never decides): {r.checks.symbolic_note}")
+        notes.append(r.convention)
+    if r.message:
+        notes.append(r.message)
+    return _example(
+        spec,
+        r.status.value,
+        [
+            {"label": "Coordinates", "text": ", ".join(spec["coordinates"])},
+            *(
+                {"label": f"Metric row {i}", "source": ",  ".join(row), "syntax": _syntax(spec)}
+                for i, row in enumerate(spec["metric"], start=1)
+            ),
+            {"label": "Held momenta of", "text": ", ".join(spec["cyclic"])},
+            {"label": "Normalisation (the user's)", "text": f"g(v, v) = {spec['normalisation']}"},
         ],
         outputs,
         checks,
@@ -2047,6 +2117,7 @@ RUNNERS = {
     "units": run_units,
     "lagrangian": run_lagrangian,
     "routh": run_routh,
+    "effective_potential": run_effective_potential,
     "variation": run_variation,
     "invariants": run_invariants,
     "discovery": run_discovery,
