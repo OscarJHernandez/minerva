@@ -27,6 +27,7 @@ import { MotionCard } from "./motion-card";
 import { ValuesNote } from "./values-note";
 import { OdeAnalysisCard, OdeNumericCard, OdeSolutionCard } from "./ode-card";
 import { PerturbationCard } from "./perturbation-card";
+import { EffectivePotentialCard } from "./effective-potential-card";
 import { RouthCard } from "./routh-card";
 import { SolveCard } from "./solve-card";
 import { IdentityCard } from "./identity-card";
@@ -219,6 +220,8 @@ function CardContent({ card }: { card: Card }) {
       return <PerturbationCard report={card.data.report} request={card.data.request} />;
     case "routh":
       return <RouthCard report={card.data} />;
+    case "effective_potential":
+      return <EffectivePotentialCard report={card.data} />;
     case "invariants":
       return <InvariantsCard report={card.data.report} />;
     case "discovery":

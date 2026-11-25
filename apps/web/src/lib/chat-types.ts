@@ -108,6 +108,54 @@ export interface PerturbationReport {
   duration_ms: number;
 }
 
+/**
+ * The radial effective potential of geodesics (`effective_potential`): `result_latex` (the radial equation) is the
+ * single result; `V_eff` and the held momenta are numbered rows (names only).
+ */
+export interface EffectivePotentialReport {
+  status: Status;
+  reason: string | null;
+  reading?: InputReading | null;
+  coordinates: string[];
+  cyclic: string[];
+  radial: string;
+  fixed: string[];
+  time: string;
+  metric_latex: string | null;
+  lagrangian_latex: string | null;
+  normalisation_latex: string | null;
+  held_fixed: {
+    coordinate: string;
+    symbol_latex: string;
+    latex: string;
+    reason: string;
+    verification: Verification | null;
+  }[];
+  routhian_latex: string | null;
+  normalisation_equation_latex: string | null;
+  veff_latex: string | null;
+  result_latex: string | null;
+  restrictions_latex: string[];
+  restrictions_complete: boolean;
+  consistency: {
+    coordinate: string;
+    acceleration_latex: string;
+    symbolic: boolean | null;
+    numeric: Verification | null;
+  }[];
+  checks: {
+    routhian: { euler_lagrange: Verification[] } | null;
+    normalisation: Verification | null;
+    radial_acceleration: Verification | null;
+    symbolic: boolean | null;
+    symbolic_note: string;
+  };
+  verification: Verification | null;
+  convention: string;
+  message: string;
+  duration_ms: number;
+}
+
 /** Routh reduction of cyclic coordinates (`routh_reduce`): R is the single result; the rows are names only. */
 export interface RouthReport {
   status: Status;
@@ -690,6 +738,13 @@ type CardBody =
           cyclic: string[];
         };
       };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "effective_potential";
+      title: string;
+      data: EffectivePotentialReport;
     }
   | {
       id: string;
