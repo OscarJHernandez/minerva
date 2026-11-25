@@ -152,20 +152,20 @@
     }
   ],
   "verification": {
-    "problems": 249,
-    "correct": 140,
-    "refused": 106,
+    "problems": 251,
+    "correct": 141,
+    "refused": 107,
     "false_accepts": 0,
     "false_rejects": 0,
     "counterexamples_found": 22,
     "pending": 1,
     "known_open": 2,
     "evidence": {
-      "symbolic_proof": 7,
+      "symbolic_proof": 8,
       "numeric_agreement": 54,
       "structural": 9,
       "conditional": 3,
-      "refusal": 31,
+      "refusal": 32,
       "unrecorded": 0
     },
     "source": "verification-summary.json",
