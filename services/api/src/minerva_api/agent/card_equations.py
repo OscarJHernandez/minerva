@@ -92,9 +92,19 @@ def _approximation_formula(report: object) -> str | None:
     return _text(report.get("result_latex"))
 
 
+# Cards whose engine result, with its one result-wide `restrictions_latex`, sits under `data["result"]` without
+# being numbered as a whole (`result_formula` does not read them): geometry (zeros of `det g` and of denominators,
+# where the coordinate expressions hold) and vector calculus (the origin and axes). Their rows link a restated
+# formula as evidence (`same_indexed_label`, `named_quantity`), and the match must carry where the row holds.
+_RESTRICTED_RESULT_CARDS = frozenset({"geometry", "vector"})
+
+
 def result_restrictions(card_type: object, data: dict[str, Any]) -> list[str]:
-    """Where the card's result is valid: its own `restrictions_latex` (top level, or inside a step's result)."""
+    """Where the card's result is valid: its own `restrictions_latex` (top level, or inside its nested result)."""
     inner = _nested(card_type, data)
+    if inner is None and card_type in _RESTRICTED_RESULT_CARDS:
+        found = data.get("result")
+        inner = found if isinstance(found, dict) else None
     for source in (data, inner or {}):
         found = source.get("restrictions_latex")
         if isinstance(found, list) and found:
