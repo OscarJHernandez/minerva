@@ -2360,42 +2360,42 @@ capabilities:
         op: effective_potential
         coordinates: [t, r, theta, phi]
         metric:
-          - ['-\left(1-\frac{2M}{r}\right)', '0', '0', '0']
-          - ['0', '\left(1-\frac{2M}{r}\right)^{-1}', '0', '0']
-          - ['0', '0', 'r^2', '0']
-          - ['0', '0', '0', 'r^2\sin^2\theta']
+          - ['-\left(1-\frac{2M}{r}\right)', "0", "0", "0"]
+          - ["0", '\left(1-\frac{2M}{r}\right)^{-1}', "0", "0"]
+          - ["0", "0", "r^2", "0"]
+          - ["0", "0", "0", 'r^2\sin^2\theta']
         cyclic: [t, phi]
         radial: r
         fixed: { theta: '\frac{\pi}{2}' }
-        normalisation: '-1'
+        normalisation: "-1"
         assumptions: { M: [positive], r: [positive] }
       - id: effective-potential-schwarzschild-null
         title: Null geodesics (the user's normalisation 0)
         op: effective_potential
         coordinates: [t, r, theta, phi]
         metric:
-          - ['-\left(1-\frac{2M}{r}\right)', '0', '0', '0']
-          - ['0', '\left(1-\frac{2M}{r}\right)^{-1}', '0', '0']
-          - ['0', '0', 'r^2', '0']
-          - ['0', '0', '0', 'r^2\sin^2\theta']
+          - ['-\left(1-\frac{2M}{r}\right)', "0", "0", "0"]
+          - ["0", '\left(1-\frac{2M}{r}\right)^{-1}', "0", "0"]
+          - ["0", "0", "r^2", "0"]
+          - ["0", "0", "0", 'r^2\sin^2\theta']
         cyclic: [t, phi]
         radial: r
         fixed: { theta: '\frac{\pi}{2}' }
-        normalisation: '0'
+        normalisation: "0"
         assumptions: { M: [positive], r: [positive] }
       - id: effective-potential-tilted-plane
         title: A plane the geodesics do not stay on is refused
         op: effective_potential
         coordinates: [t, r, theta, phi]
         metric:
-          - ['-\left(1-\frac{2M}{r}\right)', '0', '0', '0']
-          - ['0', '\left(1-\frac{2M}{r}\right)^{-1}', '0', '0']
-          - ['0', '0', 'r^2', '0']
-          - ['0', '0', '0', 'r^2\sin^2\theta']
+          - ['-\left(1-\frac{2M}{r}\right)', "0", "0", "0"]
+          - ["0", '\left(1-\frac{2M}{r}\right)^{-1}', "0", "0"]
+          - ["0", "0", "r^2", "0"]
+          - ["0", "0", "0", 'r^2\sin^2\theta']
         cyclic: [t, phi]
         radial: r
         fixed: { theta: '\frac{\pi}{3}' }
-        normalisation: '-1'
+        normalisation: "-1"
         assumptions: { M: [positive], r: [positive] }
 
   - id: variation
