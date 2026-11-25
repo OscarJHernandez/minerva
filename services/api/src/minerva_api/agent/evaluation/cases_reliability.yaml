@@ -404,6 +404,111 @@
       cyclic: [t]
   source: "Routh's procedure (Landau and Lifshitz, Mechanics, section 41; Goldstein, Classical Mechanics, section 8.3): with p_t held fixed R = (r_dot^2/f + r^2 theta_dot^2 + r^2 sin^2(theta) phi_dot^2 + p_t^2/f)/2, f = 1 - 2M/r (issue 153, with E = -p_t)"
 
+# Issue 131, the whole Schwarzschild sequence as one conversation (the closing evaluation of the plan): metric -> Christoffel
+# symbols -> geodesic Lagrangian -> Killing vectors and their charges -> Routh reduction by t -> discovery with four
+# coordinates. Every turn is really run: each later turn is built from what the earlier answers produced. Two turns pin the
+# claim checker on a formula the reply restates: a Christoffel row of the verified `geometry` card (evidence rule
+# `same_indexed_label`) and a charge `Q_k` (rule 3, `named_quantity`); a link is never "proved" by itself.
+# Not in the sequence: the radial effective potential. It needs the Routhian restricted to theta = pi/2 and rewritten with
+# the normalisation g(v, v) = -1 as ONE verified result; the merged tools give the reduction, the normalisation charge,
+# `substitute` and `isolate_variable` as separate steps, so no single call produces it and it is not asked here.
+# The last turn is `find_conserved_quantities` with four coordinates: it reduces t and phi first (Routh, verified on the
+# whole system), lists p_t, p_phi and the energy function as already known, and the reply must say that the total angular
+# momentum J^2 is not among the searched families. The single-turn case above is unchanged.
+- id: schwarzschild-sequence-metric-to-discovery
+  category: physics
+  prompt: 'The Schwarzschild metric is diag(-(1-2M/r), 1/(1-2M/r), r^2, r^2 sin(theta)^2) in the coordinates t, r, theta, phi. Give its inverse and its determinant.'
+  expected_tool: geometry
+  args: {includes: {quantities: [inverse_metric, determinant], coordinates: [t, r, theta, phi]}, absent: [assumptions]}
+  forbid_assumptions: true
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: geometry
+    arguments:
+      coordinates: [t, r, theta, phi]
+      metric: [['-(1-2*M/r)', '0', '0', '0'], ['0', '1/(1-2*M/r)', '0', '0'], ['0', '0', 'r^2', '0'], ['0', '0', '0', 'r^2*sin(theta)^2']]
+      format: text
+      quantities: [inverse_metric, determinant]
+  source: "Schwarzschild metric: g^{tt} = -1/(1-2M/r), g^{rr} = 1-2M/r, det g = -r^4 sin^2(theta) (any general relativity text); the geometry tool's own numeric legs and symbolic zero decide"
+  followups:
+    - prompt: 'Now the Christoffel symbols of that metric.'
+      expected_tool: geometry
+      args: {includes: {quantities: [christoffel], coordinates: [t, r, theta, phi]}, absent: [assumptions]}
+      forbid_assumptions: true
+      max_calls: 2
+      expect_card: {status: ok}
+      reference:
+        tool: geometry
+        arguments:
+          coordinates: [t, r, theta, phi]
+          metric: [['-(1-2*M/r)', '0', '0', '0'], ['0', '1/(1-2*M/r)', '0', '0'], ['0', '0', 'r^2', '0'], ['0', '0', '0', 'r^2*sin(theta)^2']]
+          format: text
+          quantities: [christoffel]
+      claim_marks:
+        - {formula: '\Gamma^{r}{}_{t t} = \frac{M (r - 2 M)}{r^{3}}', status: from_tool, evidence_rule: same_indexed_label}
+    - prompt: 'Write the geodesic Lagrangian of that metric, $L = \frac{1}{2} g_{\mu\nu}\dot{x}^\mu\dot{x}^\nu$, and give its equations of motion. The coordinates are t, r, theta, phi and the curve parameter is s.'
+      expected_tool: analyze_lagrangian
+      args: {includes: {coordinates: [t, r, theta, phi]}, absent: [assumptions]}
+      forbid_assumptions: true
+      max_calls: 2
+      expect_card: {status: ok}
+      reference:
+        tool: analyze_lagrangian
+        arguments:
+          lagrangian: '1/2*(-(1-2*M/r)*t_dot^2 + r_dot^2/(1-2*M/r) + r^2*theta_dot^2 + r^2*sin(theta)^2*phi_dot^2)'
+          coordinates: [t, r, theta, phi]
+          time: s
+          format: text
+      reply_forbids: '(?i)\ball (the )?(conserved|constants)|every conserved|complete (list|set)|no other (conserved|constant)'
+    - prompt: 'Find the Killing vectors of that metric and the quantities conserved along its geodesics that come from them.'
+      expected_tool: geometry
+      args: {includes: {quantities: [killing_vectors, geodesic_constants], coordinates: [t, r, theta, phi]}, absent: [assumptions]}
+      forbid_assumptions: true
+      max_calls: 2
+      expect_card: {status: ok}
+      reference:
+        tool: geometry
+        arguments:
+          coordinates: [t, r, theta, phi]
+          metric: [['-(1-2*M/r)', '0', '0', '0'], ['0', '1/(1-2*M/r)', '0', '0'], ['0', '0', 'r^2', '0'], ['0', '0', '0', 'r^2*sin(theta)^2']]
+          format: text
+          quantities: [killing_vectors, geodesic_constants]
+      reply_forbids: '(?i)\ball (the )?(killing|conserved)|no other killing|none exist|complete (list|set)'
+      claim_marks:
+        - {formula: 'Q_{2} = r^{2} \dot{\phi} \sin^{2}{\left(\theta \right)}', status: from_tool, evidence_rule: named_quantity}
+    - prompt: 'Reduce the geodesic Lagrangian of that metric by the cyclic coordinate t (Routh reduction). The coordinates are t, r, theta, phi and the curve parameter is s.'
+      expected_tool: routh_reduce
+      args: {includes: {coordinates: [t, r, theta, phi], cyclic: [t]}, absent: [assumptions]}
+      forbid_assumptions: true
+      max_calls: 2
+      expect_card: {status: ok}
+      restrictions_reported: '2\s*M|1\s*-\s*\\frac\{2\s*M\}\{r\}|horizon'
+      reply_forbids: '(?i)\bE\s*=\s*-\s*p_\{?t\}?'
+      reference:
+        tool: routh_reduce
+        arguments:
+          lagrangian: '1/2*(-(1-2*M/r)*t_dot^2 + r_dot^2/(1-2*M/r) + r^2*theta_dot^2 + r^2*sin(theta)^2*phi_dot^2)'
+          coordinates: [t, r, theta, phi]
+          time: s
+          format: text
+          cyclic: [t]
+    - prompt: 'Now search that Lagrangian, with all four coordinates, for any further conserved quantities. The curve parameter is s.'
+      expected_tool: find_conserved_quantities
+      args: {includes: {coordinates: [t, r, theta, phi]}}
+      max_calls: 2
+      expect_card: {status: ok}
+      reply_matches: '(?i)(J\^2|J\^\{2\}|total angular momentum)'
+      reply_forbids: '(?i)\ball (the )?(conserved|constants)|every conserved|complete (list|set)|no other (conserved|constant)'
+      reference:
+        tool: find_conserved_quantities
+        arguments:
+          lagrangian: '1/2*(-(1-2*M/r)*t_dot^2 + r_dot^2/(1-2*M/r) + r^2*theta_dot^2 + r^2*sin(theta)^2*phi_dot^2)'
+          coordinates: [t, r, theta, phi]
+          time: s
+          format: text
+  source: "Schwarzschild geodesics: t and phi are cyclic (p_t = -E, p_phi = L_z), the Killing vectors d_t, d_phi and the three rotations give charges, Routh reduction by t leaves a Routhian in the held p_t (Landau and Lifshitz, Mechanics, section 41); the engine's own checks decide each turn; total angular momentum J^2 is a quadratic combination of the rotation charges and is not in the families discovery searches"
+
 - id: answer-without-thinking-aloud
   category: ambiguous
   prompt: 'Whats the tautochrone problem, in two sentences?'
