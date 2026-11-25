@@ -49,9 +49,9 @@
       "id": "reference",
       "title": "Problems answered from outside Minerva",
       "what": "Differential equations, distributions, calculus and matrices whose expected answers come from other tools (mpmath, quadrature, plain arithmetic), written by hand and never regenerated from the code.",
-      "total": 105,
-      "correct": 73,
-      "refused": 31,
+      "total": 107,
+      "correct": 74,
+      "refused": 32,
       "rejected": 0,
       "pending": 1,
       "sources": [

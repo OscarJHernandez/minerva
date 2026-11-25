@@ -112,6 +112,7 @@ const NEW_ENTRIES: Record<
   | "matrix"
   | "simplify"
   | "routh"
+  | "effective_potential"
   | "vector"
 > = {
   variation: "variation",
@@ -136,6 +137,7 @@ const NEW_ENTRIES: Record<
   matrix_integral: "matrix",
   simplify: "simplify",
   routh: "routh",
+  effective_potential: "effective_potential",
   vector_scalar: "vector",
   vector_components: "vector",
   vector_convert: "vector",

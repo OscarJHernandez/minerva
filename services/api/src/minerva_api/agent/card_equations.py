@@ -192,6 +192,27 @@ def routh(data: dict[str, Any]) -> Listed:
     return out
 
 
+def effective_potential(data: dict[str, Any]) -> Listed:
+    """`veff` (`V_{eff}(r) = ...`) and `held:<coordinate>` (`p_{c} = ...`) of an accepted effective-potential
+    card. The radial equation itself is the card's single result (`result_latex`, numbered as a whole and named
+    by the result id, which carries its restrictions). A row is a name only: `@eN` of it carries no verification.
+    Not numbered: the normalisation equation (it is the user's own number written in the momenta), the Routhian
+    and the restricted Lagrangian (intermediate forms). A card that was not accepted lists nothing."""
+    if data.get("status") != "ok":
+        return []
+    out: Listed = []
+    if (veff := _text(data.get("veff_latex"))) is not None:
+        out.append(("veff", veff))
+    held = data.get("held_fixed")
+    for item in held if isinstance(held, list) else []:
+        if not isinstance(item, dict):
+            continue
+        coordinate, latex = _text(item.get("coordinate")), _text(item.get("latex"))
+        if coordinate and latex:
+            out.append((f"held:{coordinate}", latex))
+    return out
+
+
 def invariants(data: dict[str, Any]) -> Listed:
     return _rows((data.get("report") or {}).get("found"), "expression_latex", "found")
 
@@ -970,6 +991,7 @@ LIST_READERS: dict[str, Callable[[dict[str, Any]], Listed]] = {
     "geometry": geometry,
     "lagrangian": lagrangian,
     "routh": routh,
+    "effective_potential": effective_potential,
     "invariants": invariants,
     "discovery": discovery,
     "solve": solve,

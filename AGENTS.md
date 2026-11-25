@@ -635,6 +635,17 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   through mpmath): an expression of several constants has terms near 1e22 at the wide sample points that cancel exactly,
   and 53-bit samples made a true zero "not zero". The tolerance did not change; a definition wrong by 1e-6 is still
   rejected. Constants found in the same turn are not read (only stored cards).
+- Radial effective potential (`effective_potential.py`, tool `effective_potential` in the group `reduction`, card
+  `effective_potential`, issue #207, `docs/effective-potential.md`): the metric, the cyclic coordinates (the energy-like one
+  first), the radial coordinate, the fixed plane and **the normalisation `g(v, v) = kappa`, which is the user's number: a
+  required argument with no default**, give `r_dot^2 + V_eff(r) = alpha p_1^2`. A plane is refused unless the acceleration of
+  each fixed coordinate at its value is computed to be a symbolic and a numerical zero (`equatorial_not_consistent`,
+  `consistency_undecided`; typed code `restriction_not_consistent`), never assumed. The restricted Lagrangian goes through
+  `routh.reduce` (its own verification); `V_eff` comes from `g(v, v) = 2(R - sum p dR/dp)` and is shown only if two numerical legs
+  that use the full Lagrangian only pass: the equation on `g(v, v) = kappa` at 1e-15, and `r_ddot = -V_eff'/2` of the full
+  geodesic equations. The symbolic leg is reported apart; "proved" needs it and the symbolic plane check. Momenta keep their
+  names (`E = -p_t` is the user's `substitute`); restrictions are about coordinates, never singularities; the radial equation is
+  the single result (`@rN`), `veff` and `held:<c>` are rows. Wrong twins (a dropped `1 - 2M/r`, a sign, 1e-6) are in the tests.
 - Series (`series.py`) are Taylor polynomials about a finite real point, shown only if two checks that do not
   use `sympy.series` both pass: the coefficients against a Cauchy-integral estimate (trapezoid on circles,
   trusted only where the estimates at r and r/2 agree, tolerance per coefficient) and the h^(N+1) decay of the

@@ -430,6 +430,15 @@ def op_routh_reduce(payload: dict[str, Any]) -> dict[str, Any]:
     return report.model_dump(mode="json")
 
 
+def op_effective_potential(payload: dict[str, Any]) -> dict[str, Any]:
+    from .effective_potential import EffectivePotentialInput, effective_potential
+
+    report = effective_potential(
+        EffectivePotentialInput(**payload["input"]), Limits(**payload["limits"])
+    )
+    return report.model_dump(mode="json")
+
+
 # --- expansion about an equilibrium -------------------------------------------------------
 def op_expand_motion(payload: dict[str, Any]) -> dict[str, Any]:
     from .expansion import expand_motion
@@ -979,6 +988,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "differentiate": op_differentiate,
     "time_derivative": op_time_derivative,
     "routh_reduce": op_routh_reduce,
+    "effective_potential": op_effective_potential,
     "series": op_series,
     "integrate": op_integrate,
     "creative_telescoping": op_creative_telescoping,
