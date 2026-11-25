@@ -49,12 +49,13 @@ from .test_equation_rows_contract import FIXTURE, card_from, number
 from .test_total_derivative_handles import Row
 
 STATMECH_MORE = ("statmech_grand", "statmech_micro", "statmech_variance_N", "statmech_mean_E")
-NEW = ("statmech", "perturbation", "dimensional", *STATMECH_MORE)
+STATMECH_CUMULANTS = ("statmech_cumulant_E", "statmech_cumulant_N")
+NEW = ("statmech", "perturbation", "dimensional", *STATMECH_MORE, *STATMECH_CUMULANTS)
 CARD_TYPE = {
     "statmech": "statmech",
     "perturbation": "perturbation",
     "dimensional": "dimensional",
-    **dict.fromkeys(STATMECH_MORE, "statmech"),
+    **dict.fromkeys((*STATMECH_MORE, *STATMECH_CUMULANTS), "statmech"),
 }
 # classical counting and two levels keep every row under the 500-character limit, so each quantity is numbered
 GAS = {
@@ -115,6 +116,29 @@ REQUESTS: dict[str, tuple[str, dict[str, Any]]] = {
             "statistic": "mean",
         },
     ),
+    "statmech_cumulant_E": (
+        "statistical_mechanics",
+        {
+            "action": "expectation",
+            "system": {"kind": "levels", "levels": [{"energy": "0"}, {"energy": "epsilon"}]},
+            "assumptions": {"epsilon": ["positive"]},
+            "observable": "E",
+            "statistic": "cumulant",
+            "order": 3,
+        },
+    ),
+    "statmech_cumulant_N": (
+        "statistical_mechanics",
+        {
+            "action": "expectation",
+            "ensemble": "grand_canonical",
+            "system": GAS,
+            "assumptions": {"eps": ["positive"]},
+            "observable": "N",
+            "statistic": "cumulant",
+            "order": 3,
+        },
+    ),
     "perturbation": (
         "perturbation_solve",
         {
@@ -164,6 +188,8 @@ EXPECTED_KEYS = {
     "statmech_micro": ["quantity:Omega", "quantity:S"],
     "statmech_variance_N": ["quantity:variance_N"],
     "statmech_mean_E": ["quantity:mean_E"],
+    "statmech_cumulant_E": ["cumulant_E:3"],
+    "statmech_cumulant_N": ["cumulant_N:3"],
     "perturbation": ["omega0", "omega", "ratio", "solution"],
     "dimensional": ["group:0"],
 }
@@ -725,15 +751,93 @@ def test_a_live_occupation_card_is_numbered_row_by_row(ctx: ToolContext) -> None
     )
 
 
-def test_cumulants_state_no_order_and_stay_unnumbered(fixture: dict[str, Any]) -> None:
-    """`cumulant_N` / `cumulant_E` carry no order in the result (the request is not echoed), so no row exists."""
-    data = copy.deepcopy(fixture["statmech_variance_N"]["data"])
+@pytest.mark.parametrize(
+    ("name", "of"), [("statmech_cumulant_E", "E"), ("statmech_cumulant_N", "N")]
+)
+def test_a_cumulant_row_carries_its_order_and_is_drawn_as_kappa(
+    fixture: dict[str, Any], name: str, of: str
+) -> None:
+    data = fixture[name]["data"]
+    (q,) = data["result"]["quantities"]
+    assert q["name"] == f"cumulant_{of}" and q["order"] == 3 and q["variable"] is None
+    assert dict(statmech(data)) == {f"cumulant_{of}:3": rf"\kappa_{{3}}({of}) = {q['latex']}"}
+    card = card_from("statmech", data)
+    table = number(card)
+    assert list(card.numbers) == EXPECTED_KEYS[name]
+    assert all(table.items[n].part_of == "statmech" for n in card.numbers.values())
+
+
+def test_the_engine_gives_the_order_only_to_a_cumulant(fixture: dict[str, Any]) -> None:
+    for name in ("statmech", "statmech_grand", "statmech_variance_N", "statmech_mean_E"):
+        assert all(q.get("order") is None for q in fixture[name]["data"]["result"]["quantities"])
+
+
+@pytest.mark.parametrize("name", STATMECH_CUMULANTS)
+def test_a_cumulant_without_an_order_or_with_a_failed_check_or_not_exact_is_not_numbered(
+    fixture: dict[str, Any], name: str
+) -> None:
+    for order in (
+        None,
+        0,
+        5,
+        True,
+        "3",
+    ):  # a missing order is never read from the name or a check's text
+        data = copy.deepcopy(fixture[name]["data"])
+        data["result"]["quantities"][0]["order"] = order
+        assert statmech(data) == [], order
+    data = copy.deepcopy(fixture[name]["data"])
+    q = data["result"]["quantities"][0]
+    assert any("kappa_3" in c["subject"] for c in q["checks"]) or name.endswith("N")
+    del q["order"]
+    assert statmech(data) == []
+    failed = copy.deepcopy(fixture[name]["data"])
+    failed["result"]["quantities"][0]["checks"][0]["passed"] = False
+    assert statmech(failed) == []
+    for kind in ("representation", "numeric", "asymptotic"):
+        other = copy.deepcopy(fixture[name]["data"])
+        other["result"]["quantities"][0]["result_kind"] = kind
+        assert statmech(other) == []
+    labelled = copy.deepcopy(fixture[name]["data"])
+    labelled["result"]["quantities"][0]["variable"] = "beta"
+    assert statmech(labelled) == []
+    unknown = copy.deepcopy(fixture[name]["data"])
+    unknown["result"]["quantities"][0]["name"] = (
+        "cumulant_A"  # an observable of the levels is not in the table
+    )
+    assert statmech(unknown) == []
+
+
+def test_each_order_gets_its_own_key_and_a_repeat_a_distinct_one(fixture: dict[str, Any]) -> None:
+    data = copy.deepcopy(fixture["statmech_cumulant_E"]["data"])
     base = data["result"]["quantities"][0]
     data["result"]["quantities"] = [
-        {**base, "name": "cumulant_N"},
-        {**base, "name": "cumulant_E"},
+        {**base, "order": 2},
+        {**base, "order": 3},
+        {**base, "order": 3},
+        {**base, "name": "cumulant_N", "order": 3},
     ]
-    assert statmech(data) == []
+    assert [k for k, _ in statmech(data)] == [
+        "cumulant_E:2",
+        "cumulant_E:3",
+        "cumulant_E:3:2",
+        "cumulant_N:3",
+    ]
+    assert [r.split(" = ")[0] for _, r in statmech(data)] == [
+        r"\kappa_{2}(E)",
+        r"\kappa_{3}(E)",
+        r"\kappa_{3}(E)",
+        r"\kappa_{3}(N)",
+    ]
+
+
+def test_a_live_cumulant_card_has_the_order_as_a_field_and_is_numbered(ctx: ToolContext) -> None:
+    tool, args = REQUESTS["statmech_cumulant_E"]
+    out = execute(tool, args, ctx)
+    assert out.status == "ok"
+    (q,) = out.card.data["result"]["quantities"]
+    assert q["order"] == 3
+    assert [k for k, _ in listed_equations(out.card.type, out.card.data)] == ["cumulant_E:3"]
 
 
 def test_new_rows_survive_a_rebuild_and_are_never_reused(fixture: dict[str, Any]) -> None:

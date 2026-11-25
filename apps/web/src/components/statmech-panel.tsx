@@ -45,18 +45,40 @@ const REASON_TEXT: Record<string, string> = {
  * the engine named it.
  */
 const SYMBOL: Record<string, string> = symbols.symbols;
+const ORDER = "<order>";
 
 /** A quantity the user labelled (a partial derivative) is never drawn with a table symbol, whatever its label. */
-export function quantitySymbol(q: { name: string; variable: string | null }): string {
-  return q.variable === null ? (SYMBOL[q.name] ?? q.name) : q.name;
+export function quantitySymbol(q: {
+  name: string;
+  variable: string | null;
+  order?: number | null;
+}): string {
+  if (q.variable !== null) return q.name;
+  const symbol = SYMBOL[q.name];
+  if (symbol === undefined) return q.name;
+  if (!symbol.includes(ORDER)) return symbol;
+  // a cumulant symbol needs the engine's own order (an integer 1..4); without it the name is shown, as the server does
+  const order = q.order;
+  return typeof order === "number" && Number.isInteger(order) && order >= 1 && order <= 4
+    ? symbol.replace(ORDER, String(order))
+    : q.name;
 }
 
 /**
  * The key the server numbers a quantity under (`card_equations.statmech_key`): `quantity:<name>`, and
  * `quantity:<name>:<k>` for the k-th occurrence of a name (k >= 2).
  */
-export function quantityKey(quantities: { name: string }[], i: number): string {
+export function quantityKey(
+  quantities: { name: string; order?: number | null }[],
+  i: number,
+): string {
   const name = quantities[i]?.name ?? "";
+  const order = quantities[i]?.order ?? null;
+  if (order !== null && name.startsWith("cumulant_")) {
+    // a cumulant's key carries its order (`cumulant_E:3`, `cumulant_E:3:2` for the second request of it)
+    const n = quantities.slice(0, i + 1).filter((q) => q.name === name && q.order === order).length;
+    return n === 1 ? `${name}:${order}` : `${name}:${order}:${n}`;
+  }
   const k = quantities.slice(0, i + 1).filter((q) => q.name === name).length;
   return k === 1 ? `quantity:${name}` : `quantity:${name}:${k}`;
 }

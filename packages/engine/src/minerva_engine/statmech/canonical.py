@@ -350,6 +350,7 @@ def make_quantity(
     held_fixed: list[str],
     checks: list[StatCheck],
     variable: str | None = None,
+    order: int | None = None,
 ) -> StatQuantity:
     return StatQuantity(
         name=name,
@@ -358,6 +359,7 @@ def make_quantity(
         text=canon.text(expr),
         held_fixed=held_fixed,
         variable=variable,
+        order=order,
         route=route,
         checks=checks,
     )
@@ -782,6 +784,7 @@ def expectation(
         route="weighted sum over the levels with the Boltzmann probabilities",
         held_fixed=sorted(s.name for s in problem.params),
         checks=checks,
+        order=order if stat == "cumulant" else None,
     )
     steps = [*partition_steps(problem, canon), probabilities_step(canon)]
     steps.append(
@@ -890,6 +893,7 @@ def expectation_energy(
         route="cumulants of E as derivatives of ln Z with respect to beta",
         held_fixed=sorted(s.name for s in problem.params),
         checks=checks,
+        order=order if stat == "cumulant" else None,
     )
     steps = [
         *partition_steps(problem, canon),
@@ -1066,6 +1070,7 @@ def expectation_quantum(
         route="Tr(A^k exp(-beta H))/Z with the operators in the order given, exp(-beta H) from the spectral decomposition",
         held_fixed=sorted(s.name for s in problem.params),
         checks=checks,
+        order=order if stat == "cumulant" else None,
     )
     steps = [
         *partition_steps(problem, canon),
