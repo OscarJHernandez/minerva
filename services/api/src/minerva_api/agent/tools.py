@@ -48,8 +48,10 @@ from minerva_engine import (
     VectorResult,
 )
 from minerva_engine.claims import mentions_name
+from minerva_engine.effective_potential import EffectivePotentialInput
 from minerva_engine.geometry import QUANTITIES, FunctionDecl, TensorField
 from minerva_engine.integration_strategy.models import StrategyName
+from minerva_engine.models import Verification
 from minerva_engine.notation.models import InputDiagnostic, Normalization
 from minerva_engine.vector import Curve, FieldDecl, Premise, Region, Surface
 from minerva_knowledge import KnowledgeBase, SearchQuery
@@ -831,6 +833,58 @@ class RouthReduceArgs(AnalyzeLagrangianArgs):
         description="The coordinates to remove, each one the Lagrangian does not contain (cyclic), e.g. ['t'] "
         "or ['phi']. Their momenta are held fixed as the symbols p_{t}, p_{\\phi}: there is no argument for a "
         "value or another name.",
+    )
+
+
+class EffectivePotentialArgs(BaseModel):
+    """Arguments of `effective_potential`. The whole problem is sent every time: nothing is remembered."""
+
+    coordinates: list[str] = Field(
+        min_length=2,
+        max_length=4,
+        description='Coordinate names in order, as for `geometry`: ["t", "r", "theta", "phi"].',
+    )
+    metric: list[list[str]] = Field(
+        min_length=2,
+        max_length=4,
+        description="The metric components g_{mu nu} as an n by n grid of strings in one syntax (see `format`), "
+        "exactly as for `geometry`. Ask the user for the metric; never invent one. No unspecified functions.",
+    )
+    format: SyntaxChoice = Field(
+        default="auto",
+        description="Syntax of `metric` and `fixed`: LaTeX or text, the same for every entry. "
+        + FORMAT_DESCRIPTION,
+    )
+    assumptions: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description='Properties of symbols (e.g. {"M": ["positive"], "r": ["positive"]}). Every real parameter '
+        "must be declared: a symbol with no assumption is a complex number and has no real radial velocity. "
+        "Do not add assumptions the user did not state.",
+    )
+    cyclic: list[str] = Field(
+        min_length=1,
+        max_length=3,
+        description="The cyclic coordinates whose momenta are held fixed, the one that plays the energy FIRST: "
+        '["t", "phi"] for a static, spherically symmetric metric. Each momentum stays the symbol p_{c}; there is no '
+        "argument for a value or another name (E = -p_t is the user's own step).",
+    )
+    radial: str = Field(
+        min_length=1,
+        max_length=16,
+        description="The coordinate the radial equation is written in, for example r. The coordinates are exactly "
+        "`cyclic`, `radial` and the keys of `fixed`.",
+    )
+    fixed: dict[str, str] = Field(
+        default_factory=dict,
+        description='Coordinates restricted to a plane, with their value: {"theta": "\\pi/2"}. Refused unless the '
+        "geodesic equations are computed to keep the coordinate there (the equatorial restriction is never assumed).",
+    )
+    normalisation: str = Field(
+        min_length=1,
+        max_length=24,
+        description="The number kappa in g(v, v) = kappa, a rational number: -1 for a timelike geodesic and 0 for a "
+        "null one (signature -+++). It is the USER's choice and has no default: ask which they want, never choose "
+        "it yourself.",
     )
 
 
@@ -2741,6 +2795,87 @@ def run_routh_reduce(args: RouthReduceArgs, ctx: ToolContext) -> ToolOutput:
     )
 
 
+def effective_potential_request(args: EffectivePotentialArgs) -> EffectivePotentialInput:
+    """The engine request; `format: auto` picks one strict parser for the metric and the fixed values as written."""
+    cells = [str(c) for row in args.metric for c in row] + list(args.fixed.values())
+    syntax = resolve_syntax(" ".join(cells), args.format)
+    return EffectivePotentialInput(**args.model_dump(exclude={"format"}), format=syntax)
+
+
+def run_effective_potential(args: EffectivePotentialArgs, ctx: ToolContext) -> ToolOutput:
+    request = effective_potential_request(args)
+    report = ctx.engine.effective_potential(request)
+    card = Card(
+        id=uuid.uuid4().hex[:8],
+        tool="effective_potential",
+        type="effective_potential",
+        title="Effective potential",
+        data={**report.model_dump(mode="json"), "request": request.model_dump(mode="json")},
+    )
+    lines = [f"status={report.status.value}; {report.message}"]
+    known: list[str] = []
+    if report.status.value == "ok" and report.result_latex:
+        lines.append(f"normalisation (the user's): ${report.normalisation_latex}$")
+        lines.append(f"radial equation: ${report.result_latex}$")
+        known.append(report.result_latex)
+        if report.veff_latex:
+            lines.append(f"effective potential: ${report.veff_latex}$")
+            known.append(report.veff_latex)
+        for held in report.held_fixed:
+            lines.append(f"held fixed: ${held.latex}$ ({held.reason})")
+            known.append(held.latex)
+        if report.fixed:
+            lines.append(
+                "restricted to "
+                + ", ".join(f"${f}$" for f in report.fixed)
+                + " after computing that the geodesic equations keep it there ("
+                + "; ".join(
+                    f"{c.coordinate}: acceleration {'exactly 0' if c.symbolic else 'numerically 0'}"
+                    for c in report.consistency
+                )
+                + ")"
+            )
+        if report.restrictions_latex:
+            lines.append(
+                "valid only where "
+                + ", ".join(f"${r}$" for r in report.restrictions_latex)
+                + " (restrictions on the coordinates, not statements about singularities)"
+            )
+            known.extend(report.restrictions_latex)
+        elif not report.restrictions_complete:
+            lines.append("domain restrictions could not be fully determined")
+        checks = report.checks
+
+        def agreed(v: Verification | None) -> str:
+            return f"{v.numeric_points_agreed}/{v.numeric_points_checked}" if v else "not run"
+
+        lines.append(
+            "evidence: r_dot^2 + V_eff - alpha p^2 at "
+            f"{agreed(checks.normalisation)} points of the whole system on g(v, v) = kappa; the radial "
+            f"acceleration of the full geodesic equations equals -V_eff'/2 at {agreed(checks.radial_acceleration)}; "
+            f"symbolic leg: {checks.symbolic_note or 'not run'}. "
+            + (
+                "Proved symbolically and checked numerically."
+                if report.verification and report.verification.symbolic_zero
+                else "NO symbolic proof of every leg: say 'checked numerically', never 'proved'."
+            )
+        )
+        lines.append(f"convention: {report.convention}")
+        lines.append(
+            ROUTH_SYMBOL_NOTE
+            + "the result id names the radial equation, with its restrictions; V_eff is a numbered row (a name)."
+        )
+    elif report.reason:
+        lines.append(f"reason: {report.reason}")
+    return ToolOutput(
+        card,
+        "\n".join(lines),
+        known,
+        report.status.value,
+        variables=tuple(args.coordinates),
+    )
+
+
 def run_expand_motion(args: ExpandMotionArgs, ctx: ToolContext) -> ToolOutput:
     report = ctx.engine.expand_motion(
         args.lagrangian,
@@ -4131,6 +4266,17 @@ TOOLS: dict[str, Tool] = {
             run_routh_reduce,
         ),
         Tool(
+            "effective_potential",
+            "The radial effective potential of geodesics as one verified result: for a metric given in explicit "
+            "coordinates, the cyclic coordinates held fixed (verified conserved momenta p_{t}, p_{phi}), a plane "
+            "the geodesic stays on (`theta = pi/2`, refused unless the geodesic equations are computed to keep it "
+            "there) and the normalisation g(v, v) = kappa THE USER states (never choose it: -1 timelike, 0 null), "
+            "it returns r_dot^2 + V_eff(r) = p_t^2 (the general form for a static, spherically symmetric metric), "
+            "checked against the full geodesic equations, with where it is valid.",
+            EffectivePotentialArgs,
+            run_effective_potential,
+        ),
+        Tool(
             "time_derivative",
             "The TOTAL time derivative of a quantity along a motion: coordinates, velocities and time all "
             "change (chain rule; accelerations appear). Use it for d/dt of a momentum, an energy, an "
@@ -4718,6 +4864,7 @@ MATRIX_SAFE: dict[str, str] = {
     "statistical_model": "families and parameters typed by their own schema",
     "statistical_mechanics": "systems typed by their own schema; refuses what it cannot build",
     "geometry": "explicit coordinates and metric components; the quantities are numbers or functions of them",
+    "effective_potential": "explicit coordinates and metric components, as `geometry`; refuses a declared function",
     "electromagnetism": "its own typed charges, fields and premises",
     "tensor_canonicalize": "abstract-index tensors by index structure only, never by sampled values",
     "search_handbook": "retrieval; no mathematics is evaluated",

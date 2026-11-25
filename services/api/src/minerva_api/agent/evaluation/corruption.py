@@ -61,6 +61,7 @@ DEPENDENT_TOOLS = frozenset(
 # Tools with no reference call, and why. A registered tool that is neither covered nor listed fails a test.
 EXEMPT: dict[str, str] = {
     "geometry": "its inputs are nested grids, not a formula string; corrupted by tests of its own parser",
+    "effective_potential": "its inputs are a metric grid and role names, not a formula string; the metric cells go through the geometry parser, corrupted by tests of its own",
     "load_tools": "takes group names, no mathematics",
     "search_invariants": "no benchmark case yet; shares the Lagrangian reader with analyze_lagrangian",
     "sums": "no benchmark case yet; shares the parser with expectation",

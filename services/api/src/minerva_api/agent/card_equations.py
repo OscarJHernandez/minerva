@@ -92,9 +92,19 @@ def _approximation_formula(report: object) -> str | None:
     return _text(report.get("result_latex"))
 
 
+# Cards whose engine result, with its one result-wide `restrictions_latex`, sits under `data["result"]` without
+# being numbered as a whole (`result_formula` does not read them): geometry (zeros of `det g` and of denominators,
+# where the coordinate expressions hold) and vector calculus (the origin and axes). Their rows link a restated
+# formula as evidence (`same_indexed_label`, `named_quantity`), and the match must carry where the row holds.
+_RESTRICTED_RESULT_CARDS = frozenset({"geometry", "vector"})
+
+
 def result_restrictions(card_type: object, data: dict[str, Any]) -> list[str]:
-    """Where the card's result is valid: its own `restrictions_latex` (top level, or inside a step's result)."""
+    """Where the card's result is valid: its own `restrictions_latex` (top level, or inside its nested result)."""
     inner = _nested(card_type, data)
+    if inner is None and card_type in _RESTRICTED_RESULT_CARDS:
+        found = data.get("result")
+        inner = found if isinstance(found, dict) else None
     for source in (data, inner or {}):
         found = source.get("restrictions_latex")
         if isinstance(found, list) and found:
@@ -189,6 +199,27 @@ def routh(data: dict[str, Any]) -> Listed:
             coordinate, latex = _text(item.get("coordinate")), _text(item.get("latex"))
             if coordinate and latex:
                 out.append((f"{prefix}:{coordinate}", latex))
+    return out
+
+
+def effective_potential(data: dict[str, Any]) -> Listed:
+    """`veff` (`V_{eff}(r) = ...`) and `held:<coordinate>` (`p_{c} = ...`) of an accepted effective-potential
+    card. The radial equation itself is the card's single result (`result_latex`, numbered as a whole and named
+    by the result id, which carries its restrictions). A row is a name only: `@eN` of it carries no verification.
+    Not numbered: the normalisation equation (it is the user's own number written in the momenta), the Routhian
+    and the restricted Lagrangian (intermediate forms). A card that was not accepted lists nothing."""
+    if data.get("status") != "ok":
+        return []
+    out: Listed = []
+    if (veff := _text(data.get("veff_latex"))) is not None:
+        out.append(("veff", veff))
+    held = data.get("held_fixed")
+    for item in held if isinstance(held, list) else []:
+        if not isinstance(item, dict):
+            continue
+        coordinate, latex = _text(item.get("coordinate")), _text(item.get("latex"))
+        if coordinate and latex:
+            out.append((f"held:{coordinate}", latex))
     return out
 
 
@@ -970,6 +1001,7 @@ LIST_READERS: dict[str, Callable[[dict[str, Any]], Listed]] = {
     "geometry": geometry,
     "lagrangian": lagrangian,
     "routh": routh,
+    "effective_potential": effective_potential,
     "invariants": invariants,
     "discovery": discovery,
     "solve": solve,

@@ -2984,6 +2984,78 @@ Name the cyclic coordinates of a Lagrangian to remove (the time of a static metr
 - **Status:** `unsupported`
 - r is not cyclic: the Lagrangian depends on it, so its momentum is not conserved and cannot be held fixed.
 
+### Radial effective potential of geodesics
+
+*Available in:* chat.
+
+Give the metric, the cyclic coordinates whose momenta are held (the time of a static metric and an angle), a plane the geodesic stays on, and the normalisation g(v, v) = κ you want (−1 for a timelike geodesic, 0 for a null one: your number, never chosen for you). Minerva returns the radial equation ṙ² + V_eff(r) = p_t² as one verified result. The restriction to the plane is first computed to be consistent (the acceleration of the fixed coordinate at its value is exactly zero) and refused otherwise; the cyclic coordinates are Routh reduced with that reduction's own verification; and the equation is shown only if, at points of the whole system with the momenta taken as numerical derivatives of the full Lagrangian, it holds on g(v, v) = κ and the radial acceleration of the full geodesic equations equals −V_eff′/2. The symbolic comparison is reported separately and is the only thing called proved.
+
+**Limits**
+
+- The metric is explicit (no unspecified functions); the coordinates are the cyclic ones, one radial coordinate and the ones fixed on a plane. Another shape (a cross term in ṙ, an energy-like momentum whose coefficient depends on r) is refused with its reason.
+- The momenta keep the names p_t and p_φ; E = −p_t and L = p_φ are your own substitution step.
+- Parameters you do not declare real are sampled as complex numbers, for which there is no real radial velocity; declare them (for example positive).
+- The zeros of what the formulas divide by are restrictions on the coordinates, not statements about singularities of the geometry.
+
+#### Timelike geodesics of the Schwarzschild metric
+
+- **Coordinates:** t, r, theta, phi
+- **Metric row 1:** `-\left(1-\frac{2M}{r}\right),  0,  0,  0` (LaTeX)
+- **Metric row 2:** `0,  \left(1-\frac{2M}{r}\right)^{-1},  0,  0` (LaTeX)
+- **Metric row 3:** `0,  0,  r^2,  0` (LaTeX)
+- **Metric row 4:** `0,  0,  0,  r^2\sin^2\theta` (LaTeX)
+- **Held momenta of:** t, phi
+- **Normalisation (the user's):** g(v, v) = -1
+- **Assumptions:** M positive; r positive
+- **Status:** `ok`
+- **Radial equation:** $\dot{r}^{2} + \frac{\left(- 2 M + r\right) \left(p_{\phi}^{2} + r^{2}\right)}{r^{3}} = p_{t}^{2}$
+- **Effective potential:** $V_{\mathrm{eff}}\left(r\right) = \frac{\left(- 2 M + r\right) \left(p_{\phi}^{2} + r^{2}\right)}{r^{3}}$
+- **Held fixed:** $p_{t} = \dot{t} \left(\frac{2 M}{r} - 1\right)$ — conserved because t is cyclic (L does not depend on it); verified on the equations of motion
+- **Held fixed:** $p_{\phi} = \dot{\phi} r^{2}$ — conserved because phi is cyclic (L does not depend on it); verified on the equations of motion
+- **Valid where:** $- 2 M + r \neq 0$
+- **Check:** theta stays at its value (acceleration there is exactly zero): 6 of 6 points
+- **Check:** r_dot^2 + V_eff - alpha p^2 on g(v, v) = kappa at points of the whole system: 6 of 6 points
+- **Check:** radial acceleration of the full geodesic equations = -V_eff'/2: 6 of 6 points
+- **Check:** symbolic leg (reported, never decides): 2 r̈ + V_eff' vanishes symbolically along the motion of the Routhian once r_dot² is replaced by the radial equation
+- Geodesics are the motions of L = g(v, v)/2 with an affine parameter. R = L - Σ p_c ċ is the Routhian of the restricted Lagrangian (the sign in which it acts as a Lagrangian). The normalisation g(v, v) = κ is the user's: κ = -1 is timelike and κ = 0 null in a signature (-, +, +, +). The momenta keep the names p_c shown; naming one E or L is the user's own step.
+- The radial equation of the geodesics with g(v, v) = -1: r_dot^2 + V_eff(r) = p_t^2. Proved: the equatorial restriction and the radial equation are symbolic zeros, and checked numerically against the full geodesic equations.
+
+#### Null geodesics (the user's normalisation 0)
+
+- **Coordinates:** t, r, theta, phi
+- **Metric row 1:** `-\left(1-\frac{2M}{r}\right),  0,  0,  0` (LaTeX)
+- **Metric row 2:** `0,  \left(1-\frac{2M}{r}\right)^{-1},  0,  0` (LaTeX)
+- **Metric row 3:** `0,  0,  r^2,  0` (LaTeX)
+- **Metric row 4:** `0,  0,  0,  r^2\sin^2\theta` (LaTeX)
+- **Held momenta of:** t, phi
+- **Normalisation (the user's):** g(v, v) = 0
+- **Assumptions:** M positive; r positive
+- **Status:** `ok`
+- **Radial equation:** $\dot{r}^{2} + \frac{p_{\phi}^{2} \left(- 2 M + r\right)}{r^{3}} = p_{t}^{2}$
+- **Effective potential:** $V_{\mathrm{eff}}\left(r\right) = \frac{p_{\phi}^{2} \left(- 2 M + r\right)}{r^{3}}$
+- **Held fixed:** $p_{t} = \dot{t} \left(\frac{2 M}{r} - 1\right)$ — conserved because t is cyclic (L does not depend on it); verified on the equations of motion
+- **Held fixed:** $p_{\phi} = \dot{\phi} r^{2}$ — conserved because phi is cyclic (L does not depend on it); verified on the equations of motion
+- **Valid where:** $- 2 M + r \neq 0$
+- **Check:** theta stays at its value (acceleration there is exactly zero): 6 of 6 points
+- **Check:** r_dot^2 + V_eff - alpha p^2 on g(v, v) = kappa at points of the whole system: 6 of 6 points
+- **Check:** radial acceleration of the full geodesic equations = -V_eff'/2: 6 of 6 points
+- **Check:** symbolic leg (reported, never decides): 2 r̈ + V_eff' vanishes symbolically along the motion of the Routhian once r_dot² is replaced by the radial equation
+- Geodesics are the motions of L = g(v, v)/2 with an affine parameter. R = L - Σ p_c ċ is the Routhian of the restricted Lagrangian (the sign in which it acts as a Lagrangian). The normalisation g(v, v) = κ is the user's: κ = -1 is timelike and κ = 0 null in a signature (-, +, +, +). The momenta keep the names p_c shown; naming one E or L is the user's own step.
+- The radial equation of the geodesics with g(v, v) = 0: r_dot^2 + V_eff(r) = p_t^2. Proved: the equatorial restriction and the radial equation are symbolic zeros, and checked numerically against the full geodesic equations.
+
+#### A plane the geodesics do not stay on is refused
+
+- **Coordinates:** t, r, theta, phi
+- **Metric row 1:** `-\left(1-\frac{2M}{r}\right),  0,  0,  0` (LaTeX)
+- **Metric row 2:** `0,  \left(1-\frac{2M}{r}\right)^{-1},  0,  0` (LaTeX)
+- **Metric row 3:** `0,  0,  r^2,  0` (LaTeX)
+- **Metric row 4:** `0,  0,  0,  r^2\sin^2\theta` (LaTeX)
+- **Held momenta of:** t, phi
+- **Normalisation (the user's):** g(v, v) = -1
+- **Assumptions:** M positive; r positive
+- **Status:** `unsupported`
+- Fixing theta at the stated value is not consistent with the geodesic equations: its acceleration does not vanish there, so a geodesic does not stay on that plane. Nothing is restricted.
+
 ### Variational calculus
 
 *Available in:* workbench, chat, HTTP API.
