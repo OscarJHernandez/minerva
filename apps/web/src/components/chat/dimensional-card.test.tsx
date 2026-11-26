@@ -224,7 +224,8 @@ describe("UnitsCard", () => {
     expect(note.querySelector('[data-quantity="r"] .katex')).not.toBeNull();
     // A name the report does not list stays plain text.
     expect(note.querySelector('[data-quantity="k"]')?.textContent).toBe(", k");
-    expect(screen.getByText(/assumed by the assistant\)/)).toBeInTheDocument();
+    // One tag per listed reading the assistant assumed: r and r_dot (k has no reading row).
+    expect(screen.getAllByText(/assumed by the assistant\)/)).toHaveLength(2);
     expect(screen.getByText(/read from the quantity it differentiates/)).toBeInTheDocument();
   });
 
