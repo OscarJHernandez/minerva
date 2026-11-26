@@ -14,10 +14,10 @@ import sympy as sp
 from sympy.core.function import AppliedUndef
 
 from ..build import Builder
-from ..errors import MinervaMathError, UnsupportedInput, diagnostic_of
-from ..latexparse import reject_text_syntax
+from ..errors import MinervaMathError, ParseError, UnsupportedInput, diagnostic_of
+from ..latexparse import reject_text_syntax_in
 from ..models import ExpressionInput, Limits, Status
-from ..notation.models import InputDiagnostic
+from ..notation.models import InputCode, InputDiagnostic
 from .models import GeometryInput
 from .tensors import Tensor
 
@@ -103,17 +103,19 @@ def build_geometry(data: GeometryInput, limits: Limits, max_dimension: int) -> G
         functions[name] = args
 
     try:
+        cells = [c for row in data.metric for c in row]
+        cells += list(data.tensor.components) if data.tensor is not None else []
+        ctx = _Parser(data, limits, assumptions, functions, parse_expression)
         if data.format == "latex":
             # The same refusal every cell gets from parse_latex, checked over all of them first, so a metric written
             # in text syntax is refused with the typed reason (and the chat can re-read it as text) instead of the
-            # generic error of whichever cell happens to be parsed first (`^(-1)`: "expected an exponent").
-            cells = [c for row in data.metric for c in row]
-            cells += list(data.tensor.components) if data.tensor is not None else []
-            for cell in cells:
-                reject_text_syntax(cell)
+            # generic error of whichever cell happens to be parsed first (`^(-1)`: "expected an exponent"). Every
+            # problem in every cell is named at once: one at a time cost the chat a tool call per problem.
+            reject_text_syntax_in(cells)
+        else:
+            _reject_text_products(cells, ctx)
         builder = Builder(assumptions, limits, functions=functions)
         coords = [builder.symbol(c) for c in names]
-        ctx = _Parser(data, limits, assumptions, functions, parse_expression)
         g = sp.Matrix(n, n, lambda i, j: ctx.parse(data.metric[i][j]))
         tensor = _parse_tensor(data, n, ctx) if data.tensor is not None else None
     except GeometryError:
@@ -148,6 +150,42 @@ def build_geometry(data: GeometryInput, limits: Limits, max_dimension: int) -> G
         assumptions=assumptions,
         tensor=tensor,
         assumptions_used=_describe(assumptions, names, functions),
+    )
+
+
+def _reject_text_products(cells: list[str], ctx: _Parser) -> None:
+    """In text syntax, name every product written without `*` in every cell in one error.
+
+    Only the coded `implicit_multiplication` errors are merged; any other error is left to the parse of its
+    cell, so the first cell's own message is unchanged.
+    """
+    symbols: list[str] = []
+    suggestions: list[str] = []
+    for cell in cells:
+        try:
+            ctx.parse(cell)
+        except ParseError as exc:
+            if exc.code is not InputCode.IMPLICIT_MULTIPLICATION:
+                continue
+            for symbol, suggestion in zip(exc.symbols, exc.suggestions, strict=True):
+                if symbol not in symbols:
+                    symbols.append(symbol)
+                    suggestions.append(suggestion)
+        except MinervaMathError:
+            continue
+    if not symbols:
+        return
+    fixes = "; ".join(
+        "use ( ) for grouping instead of [ ]" if w == "[" else f"`{w}` → `{f}`"
+        for w, f in zip(symbols, suggestions, strict=True)
+    )
+    raise ParseError(
+        "could not parse the metric: text syntax needs `*` for every product and ( ) for grouping "
+        f"({fixes})",
+        code=InputCode.IMPLICIT_MULTIPLICATION,
+        symbols=symbols,
+        suggestions=suggestions,
+        recoverable=True,
     )
 
 

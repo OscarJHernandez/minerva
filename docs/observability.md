@@ -132,7 +132,7 @@ decision. A verified result writes no line. Fields:
   `invalid_arguments` failure, or, for a mathematical input that could not be read, one of the engine's
   `InputCode` values (`unrecognized_derivative`, `ambiguous_derivative`, `mixed_derivative_spellings`,
   `undeclared_dependent`, `declared_name_absent`, `acceleration_in_input`, `text_syntax_in_latex`, `latex_in_text`,
-  `equation_not_expression`, ...; `minerva_engine.notation.models`). It is absent when there is no code, never a
+  `implicit_multiplication`, `syntax`, `equation_not_expression`, ...; `minerva_engine.notation.models`). It is absent when there is no code, never a
   copy of the category. The symbols the code is about and the spellings that would work are the user's names and
   are in the stored message only (the model sees them in a `diagnostic: {...}` line), never in a log line.
 - `invalid_fields`: the schema paths that failed (`quantities.*.name`), rebuilt level by level from the
