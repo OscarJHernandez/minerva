@@ -89,7 +89,9 @@ export function LagrangianCard({
         <h4 className="text-sm font-medium">Constants of motion</h4>
         {report.conserved.length === 0 ? (
           <p className="mt-1 text-sm text-muted">
-            None found among the symmetries Minerva searches for.
+            {(report.not_searched?.length ?? 0) > 0
+              ? "None found in the part of the search that ran; the rest was not searched."
+              : "None found among the symmetries Minerva searches for."}
           </p>
         ) : (
           <ul className="mt-2 space-y-2">
