@@ -24,7 +24,8 @@ from minerva_engine.dimensions import (
     read_kind,
     read_unit,
 )
-from minerva_engine.pi_groups import analyze_dimensions, check_units
+from minerva_engine.latexparse import parse_latex
+from minerva_engine.pi_groups import analyze_dimensions, check_units, plain_quantity_name
 from minerva_engine.testing import budget_limits
 
 L = budget_limits()
@@ -390,3 +391,89 @@ def test_hostile_input_is_stopped(engine: Engine) -> None:
     }
     eval_attempt = engine.dimensional_analysis([q("x", "__import__('os').system('true')")])
     assert eval_attempt.status is Status.PARSE_ERROR
+
+
+# The Laplace-Runge-Lenz component of a chat debug report: the card showed theta_{dot} and r_{dot}.
+LRL = (
+    r"C_4 = k \sin(\theta) - m r^3 \dot{\theta}^2 \sin(\theta) "
+    r"+ m r^2 \dot{r} \dot{\theta} \cos(\theta)"
+)
+LRL_UNITS = [
+    q("k", "kg m^3/s^2"),
+    q("m", "kg"),
+    q("r", "m"),
+    q("r_dot", "m/s"),
+    q("theta_dot", "1/s"),
+]
+
+
+def test_a_unit_check_prints_velocities_with_their_dots() -> None:
+    r = check_units(LRL, LRL_UNITS, L, ["C_4", "theta"])
+    assert r.status is Status.OK and r.consistent is True
+    assert {d.name: d.dimension_text for d in r.derived} == {"C_4": "kg m^3 s^-2", "theta": "1"}
+    assert r.equation_latex is not None and "dot}" not in r.equation_latex
+    assert r"\dot{\theta}" in r.equation_latex and r"\dot{r}" in r.equation_latex
+    shown = {x.name: x.latex for x in r.quantities}
+    assert shown["r_dot"] == r"\dot{r}" and shown["theta_dot"] == r"\dot{\theta}"
+
+
+@pytest.mark.parametrize(
+    ("spelling", "name"),
+    [
+        (r"\dot{r}", "r_dot"),
+        (r"\dot{\theta}", "theta_dot"),
+        (r"\ddot{x}", "x_ddot"),
+        (r"\theta", "theta"),
+        (r"$r$", "r"),
+        (r"\dot{\theta}_1", "theta_1_dot"),
+        (r"\dot{\theta_1}", "theta_1_dot"),
+        (r"\dot{q}_{12}", "q_12_dot"),
+        (r"x_{0}", "x_0"),
+        (r"\varphi", "phi"),
+        (r"\omega_{\alpha}", "omega_alpha"),
+    ],
+)
+def test_a_latex_quantity_name_is_the_symbol_the_parser_reads(spelling: str, name: str) -> None:
+    assert plain_quantity_name(spelling) == name
+    assert parse_latex(spelling.strip("$")) == sp.Symbol(name)
+
+
+@pytest.mark.parametrize(
+    "spelling",
+    [
+        r"\frac{a}{b}",
+        "ab",
+        r"\Gamma",
+        r"\mathrm{m}",
+        r"\dot{ab}",
+        r"\sin",
+        r"\dot{\dot{x}}",
+        "r_dot",
+        "",
+    ],
+)
+def test_anything_else_is_not_read_as_a_name(spelling: str) -> None:
+    assert plain_quantity_name(spelling) is None
+
+
+def test_a_symbol_only_inside_sin_and_cos_gets_a_hint_and_nothing_is_assumed() -> None:
+    """Call 2 of the debug report: the model left theta out and had to work out `unknown` itself."""
+    r = check_units(LRL, LRL_UNITS, L, ["C_4"])
+    assert r.status is Status.PARSE_ERROR and r.derived == []
+    assert "No unit or kind was given for theta" in r.message
+    assert "theta appears only as the argument of cos, sin: list it under `unknown`" in r.message
+
+
+@pytest.mark.parametrize(
+    "equation",
+    [r"y = x \sin(x)", r"y = |x| + \exp(x)", r"y = \sqrt{x}", r"y = x"],
+)
+def test_a_symbol_also_outside_a_function_gets_no_hint(equation: str) -> None:
+    r = check_units(equation, [q("y", "m")], L)
+    assert r.status is Status.PARSE_ERROR
+    assert "No unit or kind was given for x" in r.message and "appears only" not in r.message
+
+
+def test_the_hint_names_exp_and_log() -> None:
+    r = check_units(r"y = \exp(a) + \log(a)", [q("y", "1")], L)
+    assert "a appears only as the argument of exp, log" in r.message

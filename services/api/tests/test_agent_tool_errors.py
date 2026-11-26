@@ -371,3 +371,68 @@ def test_a_wrapped_system_is_run_after_the_repair(ctx: ToolContext) -> None:
     }
     fixed, notes = repair_arguments(TOOLS["statistical_mechanics"].args_model, sent)
     assert notes and execute("statistical_mechanics", fixed, ctx).status == "ok"
+
+
+# Call 1 of a chat debug report, verbatim: `quantities` as a JSON string, names in LaTeX. It was refused as
+# "Input should be a valid list" (`\d` is not a JSON escape), and its names were not the parser's symbols.
+REPORT_EQUATION = (
+    r"C_4 = k \sin{\left(\theta \right)} - m r^{3} \dot{\theta}^{2} \sin{\left(\theta \right)} "
+    r"+ m r^{2} \dot{r} \dot{\theta} \cos{\left(\theta \right)}"
+)
+REPORT_QUANTITIES = (
+    r'[{"name": "k", "unit": "kg m^3/s^2"}, {"name": "m", "unit": "kg"}, {"name": "r", "unit": "m"}, '
+    r'{"name": "\dot{r}", "unit": "m/s"}, {"name": "\dot{\theta}", "unit": "1/s"}]'
+)
+
+
+def test_a_json_string_of_quantities_with_latex_names_is_read(ctx: ToolContext) -> None:
+    first = {"equation": REPORT_EQUATION, "quantities": REPORT_QUANTITIES, "unknown": ["C_4"]}
+    second = {**first, "unknown": ["C_4", r"\theta"]}
+    msg = play(
+        ReplayLLM([call("check_units", first), call("check_units", second), say("Done.")]), ctx
+    )
+    trace = msg["trace"]
+    # The first call now reaches the engine, which (rightly) asks about theta instead of refusing the shape.
+    assert trace[0]["arguments_valid"] is True and trace[0]["status"] == "parse_error"
+    assert "valid list" not in trace[0]["for_model"]
+    assert "theta appears only as the argument of cos, sin" in trace[0]["for_model"]
+    assert trace[1]["status"] == "ok", trace[1]["for_model"]
+    assert "dimension of C_4, given these inputs: [kg m^3 s^-2]" in trace[1]["for_model"]
+    assert r"\dot{\theta}" in msg["blocks"][1]["card"]["data"]["report"]["equation_latex"]
+
+
+def test_latex_backslashes_that_look_like_json_escapes_stay_latex() -> None:
+    from minerva_api.agent.arguments import repair_arguments
+    from minerva_api.agent.tools import UnitsCheckArgs
+
+    raw = r'[{"name": "\nu", "unit": "m^2/s"}, {"name": "\theta", "unit": "1"}, {"name": "\beta", "unit": "1"}]'
+    fixed, notes = repair_arguments(
+        UnitsCheckArgs, {"equation": r"x = 1", "quantities": raw, "unknown": []}
+    )
+    assert [q["name"] for q in fixed["quantities"]] == ["nu", "theta", "beta"]
+    assert any(n.target == "nu, theta, beta" for n in notes)
+    # A JSON escape meant as one is still one.
+    fixed, _ = repair_arguments(
+        UnitsCheckArgs,
+        {
+            "equation": "x = 1",
+            "quantities": r'[{"name": "x", "unit": "m", "meaning": "a \"b\" é"}]',
+        },
+    )
+    assert fixed["quantities"][0]["meaning"] == 'a "b" é'
+
+
+@pytest.mark.parametrize(
+    "quantities",
+    [
+        r'[{"name": "\dot{r}", "unit": "m/s"',  # not JSON at all
+        r'[{"name": "\frac{a}{b}", "unit": "m"}]',  # not a name
+        r'[{"name": "ab", "unit": "m"}, {"name": "\mathrm{m}", "unit": "kg"}]',
+    ],
+)
+def test_what_is_not_a_quantity_name_is_still_refused(quantities: str, ctx: ToolContext) -> None:
+    msg = play(
+        ReplayLLM([call("check_units", {"equation": "x = 1", "quantities": quantities}), say(".")]),
+        ctx,
+    )
+    assert msg["trace"][0]["status"] in ("error", "parse_error"), msg["trace"][0]["for_model"]

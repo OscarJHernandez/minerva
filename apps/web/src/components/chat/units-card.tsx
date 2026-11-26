@@ -61,8 +61,18 @@ export function UnitsCard({
 
       {assumed.length > 0 && (
         <p className="mt-3 rounded border border-rule p-3 text-sm" role="note">
-          <span className="font-medium">Assumed by the assistant:</span> {assumed.join(", ")}. You
-          did not state these units, so the result holds only given them.
+          <span className="font-medium">Assumed by the assistant:</span>{" "}
+          {assumed.map((name, i) => {
+            // The engine's own reading of the name (`r_dot` is `\dot{r}`); a name it did not list stays text.
+            const latex = report.quantities.find((q) => q.name === name)?.latex;
+            return (
+              <span key={name} data-quantity={name}>
+                {i > 0 && ", "}
+                {latex ? <Math latex={latex} /> : name}
+              </span>
+            );
+          })}
+          . You did not state these units, so the result holds only given them.
         </p>
       )}
 

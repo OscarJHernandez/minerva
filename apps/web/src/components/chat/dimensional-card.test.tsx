@@ -211,12 +211,21 @@ describe("UnitsCard", () => {
           ],
         }}
         methods={[]}
-        assumed={["r"]}
+        assumed={["r", "r_dot", "k"]}
       />,
     );
     expect(screen.getByLabelText("Derived dimensions")).toHaveTextContent("given these inputs");
-    expect(screen.getByRole("note")).toHaveTextContent("Assumed by the assistant: r");
-    expect(screen.getByText(/assumed by the assistant\)/)).toBeInTheDocument();
+    const note = screen.getByRole("note");
+    expect(note).toHaveTextContent("Assumed by the assistant:");
+    // A velocity is shown as the engine read it (\dot{r}), never as the raw name r_dot.
+    const velocity = note.querySelector('[data-quantity="r_dot"]');
+    expect(velocity?.querySelector(".katex")).not.toBeNull();
+    expect(velocity?.textContent).not.toContain("r_dot");
+    expect(note.querySelector('[data-quantity="r"] .katex')).not.toBeNull();
+    // A name the report does not list stays plain text.
+    expect(note.querySelector('[data-quantity="k"]')?.textContent).toBe(", k");
+    // One tag per listed reading the assistant assumed: r and r_dot (k has no reading row).
+    expect(screen.getAllByText(/assumed by the assistant\)/)).toHaveLength(2);
     expect(screen.getByText(/read from the quantity it differentiates/)).toBeInTheDocument();
   });
 

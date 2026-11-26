@@ -13,12 +13,15 @@ Repairs, in this order, each only when the schema decides the target:
 * a string given where a list of names is wanted is split on commas (`"X, Y, s"`, `"[X, Y]"`) when every piece
   is a valid name;
 * a string given where a list of formulas is wanted becomes a one-item list;
-* a JSON string given where an object or list is wanted is parsed;
+* a JSON string given where an object or list is wanted is parsed, a backslash that starts LaTeX (`\dot`,
+  `\theta`) kept as a backslash rather than read as a JSON escape;
 * a number given where text is wanted becomes its text (`_coerce_numbers`, the same rule `execute` applies, so
   that validity, the trace and the call key agree).
 * a theorem (`gradient_theorem`, `divergence_theorem`, `stokes_theorem`) sent with no `expression` and exactly one
   declared field of the kind the theorem takes (a scalar for the gradient theorem, a vector for the others)
   gets that field's name as its expression: the theorem is about that field and there is no other reading.
+* in the unit tools, a quantity name written in LaTeX (`\dot{r}`, `\theta`) becomes the symbol the parser
+  reads it as (`r_dot`, `theta`), by the engine's closed grammar (`plain_quantity_name`).
 
 Anything else stays an `invalid_arguments` refusal with the per-field message.
 """
@@ -32,6 +35,7 @@ from collections.abc import Mapping
 from typing import Any, Union, get_args, get_origin
 
 from minerva_engine.notation.models import Normalization, NormalizationKind
+from minerva_engine.pi_groups import plain_quantity_name
 from pydantic import BaseModel
 
 from .mathinput import MATH_FIELDS, MATH_LIST_FIELDS
@@ -117,7 +121,7 @@ def repair_arguments(
                 continue
         if _is_container(annotation) and value.lstrip()[:1] in "[{":
             try:
-                parsed = json.loads(value)
+                parsed = json.loads(_keep_latex_backslashes(value))
             except ValueError:
                 continue
             if isinstance(parsed, (list, dict)):
@@ -149,8 +153,67 @@ def repair_arguments(
     _unit_null_is_unknown(fields, out, notes)
     _default_assumption(fields, out, notes)
     _nested_numbers(fields, out, notes)
+    _quantity_names(model, out, notes)
 
     return (out if notes else arguments), tuple(notes)
+
+
+# A backslash pair JSON means as an escape when a model writes LaTeX inside a JSON string: `\\`, `\"`, `\/` and
+# `\uXXXX`. Every other backslash is LaTeX (`\dot`, and also `\theta`, `\nu`, `\beta`, whose `\t`, `\n`, `\b`
+# are valid JSON escapes that would silently become a tab, a newline or a backspace).
+_JSON_ESCAPE = re.compile(r'\\(\\|"|/|u[0-9a-fA-F]{4}|.)', re.DOTALL)
+
+
+def _keep_latex_backslashes(text: str) -> str:
+    return _JSON_ESCAPE.sub(
+        lambda m: m.group(0) if len(m.group(1)) > 1 or m.group(1) in '\\"/' else "\\" + m.group(0),
+        text,
+    )
+
+
+# Tools whose names are quantities, and the fields that hold names: a name the model wrote in LaTeX
+# (`\dot{r}`, `\theta`) is the symbol the parser makes of it (`r_dot`, `theta`). Only a name that is not
+# already a valid name is touched, and only into one the engine's closed grammar accepts.
+_QUANTITY_NAME_TOOLS = {
+    "UnitsCheckArgs": ("quantities", "unknown"),
+    "DimensionalArgs": ("quantities", "unknown", "repeating"),
+}
+
+
+def _rename(text: Any, changed: list[tuple[str, str]]) -> Any:
+    if not isinstance(text, str) or _NAME.fullmatch(text):
+        return text
+    plain = plain_quantity_name(text)
+    if plain is None:
+        return text
+    changed.append((text, plain))
+    return plain
+
+
+def _quantity_names(
+    model: type[BaseModel], out: dict[str, Any], notes: list[Normalization]
+) -> None:
+    for field in _QUANTITY_NAME_TOOLS.get(model.__name__, ()):
+        value = out.get(field)
+        changed: list[tuple[str, str]] = []
+        if isinstance(value, str):
+            out[field] = _rename(value, changed)
+        elif isinstance(value, list):
+            out[field] = [
+                {**item, "name": _rename(item["name"], changed)}
+                if isinstance(item, dict) and "name" in item
+                else _rename(item, changed)
+                for item in value
+            ]
+        if changed:
+            notes.append(
+                _note(
+                    field,
+                    ", ".join(before for before, _ in changed),
+                    ", ".join(after for _, after in changed),
+                    "a quantity is named by its symbol: \\dot{r} is r_dot, \\theta is theta",
+                )
+            )
 
 
 # Tools whose one formula is a quantity (not an equation) and the field that holds it. A relation read from a

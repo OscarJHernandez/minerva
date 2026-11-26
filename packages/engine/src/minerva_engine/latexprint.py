@@ -4,15 +4,24 @@ One printer, one convention: the constants are upright (``\\mathrm{e}``, ``\\mat
 ``e`` or ``i`` in output is always a user symbol. ``latexparse`` reads ``\\mathrm{e}`` and
 ``\\mathrm{i}`` back as the constants, so printed output survives a round trip. Inverse
 trigonometric functions use the full ``\\arcsin`` family the parser accepts, not ``\\operatorname{asin}``.
+Velocities and accelerations (the symbols ``q_dot`` and ``q_ddot`` the parser makes of ``\\dot{q}`` and
+``\\ddot{q}``) print with the dot, so they read back as the same symbol.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import sympy as sp
 from sympy.printing.latex import LatexPrinter
 from sympy.printing.str import StrPrinter
+
+# `theta_dot`, `x_ddot`, `theta_1_dot`: a head, at most one subscript, then the derivative suffix.
+_VELOCITY_NAME = re.compile(
+    r"^(?P<head>[A-Za-z][A-Za-z0-9]*)(?:_(?P<sub>[A-Za-z0-9]+))?_(?P<kind>dot|ddot)$"
+)
+_SUFFIXES = frozenset({"dot", "ddot"})
 
 
 class MinervaLatexPrinter(LatexPrinter):  # type: ignore[misc]
@@ -21,6 +30,24 @@ class MinervaLatexPrinter(LatexPrinter):  # type: ignore[misc]
         if expr is sp.E:
             return r"\mathrm{e}"
         return str(super()._print(expr, **kwargs))
+
+    def _print_Symbol(self, expr: sp.Symbol, style: str = "plain") -> str:
+        """`theta_dot` is `\\dot{\\theta}`, `theta_1_dot` is `\\dot{\\theta}_{1}` (as the parser reads
+        `\\dot{\\theta}_1`). SymPy's default made `theta_{dot}`, and `x_{\\dot{d}}` of `x_ddot`. A name
+        the caller maps in `symbol_names` keeps that mapping."""
+        match = _VELOCITY_NAME.match(expr.name)
+        if (
+            expr in self._settings["symbol_names"]
+            or match is None
+            or match["head"] in _SUFFIXES
+            or match["sub"] in _SUFFIXES
+        ):
+            return str(super()._print_Symbol(expr, style=style))
+        head = str(super()._print_Symbol(sp.Symbol(match["head"])))
+        tex = rf"\{match['kind']}{{{head}}}"
+        if match["sub"] is not None:
+            tex += f"_{{{super()._print_Symbol(sp.Symbol(match['sub']))}}}"
+        return tex
 
     # Applied undefined functions print as f(r), their derivatives as f'(r), f''(r), f^{(n)}(r).
     # The parser reads f(r) back when f is declared (geometry); other operations never produce them.

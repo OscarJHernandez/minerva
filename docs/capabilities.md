@@ -2733,6 +2733,7 @@ Finds the dimension of a quantity from the equation it is in and the units of th
 - A dimension is "given these inputs". A unit the user did not state is the assistant's, and the card says so.
 - A matching dimension does not prove an equation correct. Coherent SI units only, and an unknown in an exponent or a symbolic power is refused.
 - `x_dot` and `x_ddot` are read as the dimension of `x` over s and s^2 unless a unit is given for them.
+- In chat, a quantity named in LaTeX (`\dot{r}`, `\theta`) is read as the symbol the parser makes of it (`r_dot`, `theta`). A symbol that appears only inside sin, cos, exp or log is never assumed dimensionless: the refusal says to list it under `unknown`.
 
 #### The units of a constant of the Kepler problem
 
