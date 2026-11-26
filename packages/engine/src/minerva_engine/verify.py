@@ -487,3 +487,66 @@ def euler_lagrange_check(
         )
         for i in range(n)
     ]
+
+
+# A screen, not a verification: `clearly_nonzero` may only rule a candidate *out* before the symbolic test
+# would. A nonzero value of an expression at one point proves it is not identically zero, provided the value
+# is not rounding noise. So the value must exceed SCREEN_REL_TOL of the size of the terms that cancel in it,
+# and agree between two working precisions to far better than that; anything small or unstable is "not
+# clearly nonzero" and the caller goes on to its symbolic test as before.
+SCREEN_REL_TOL = 1e-8
+SCREEN_DIGITS = (30, 60)
+SCREEN_POINTS = 4
+
+
+def clearly_nonzero(expr: sp.Expr, *, seed: int = 20261126, points: int = SCREEN_POINTS) -> bool:
+    """True only if `expr` is shown to be nonzero at a sampled point (never a proof that it is zero).
+
+    The terms of `expr` (its top-level sum, not expanded) are evaluated separately at assumption-respecting
+    points, as exact rationals through mpmath at 30 and 60 digits. A point counts when the sum exceeds
+    `SCREEN_REL_TOL` times the sum of the terms' sizes and the two precisions agree to 1e-20 of that size:
+    a true zero leaves at most ~1e-50 of it at 60 digits. Points where evaluation fails are skipped.
+    """
+    if contains_indexed(expr) or contains_distribution(expr):
+        return False
+    terms = list(sp.Add.make_args(expr))
+    symbols = sorted(expr.free_symbols, key=lambda s: s.name)
+    if not symbols:
+        try:
+            return bool(abs(complex(expr.evalf(60))) > 1e-30)
+        except (TypeError, ValueError):
+            return False
+    evaluators = [_high_precision(sp.Add(*terms), symbols, d) for d in SCREEN_DIGITS]
+    size = _high_precision_terms(terms, symbols, SCREEN_DIGITS[-1])
+    rng = random.Random(seed)  # noqa: S311 - deterministic sampling, not cryptographic
+    seen = 0
+    for _ in range(SAMPLE_ATTEMPTS):
+        values = {s: _sample(s, rng, spread=max(1, len(symbols))) for s in symbols}
+        low, high = (evaluate(values) for evaluate in evaluators)
+        scale = size(values)
+        if not isinstance(low, complex) or not isinstance(high, complex) or scale is None:
+            continue
+        seen += 1
+        if scale > 0 and abs(high) > SCREEN_REL_TOL * scale and abs(high - low) <= 1e-20 * scale:
+            return True
+        if seen >= points:
+            break
+    return False
+
+
+def _high_precision_terms(
+    terms: Sequence[sp.Expr], symbols: Sequence[sp.Symbol], digits: int
+) -> Callable[[dict[sp.Symbol, sp.Expr]], float | None]:
+    """Sum of |term| at a point, at `digits` digits (None where a term is undefined there)."""
+    evaluators = [_high_precision(t, symbols, digits) for t in terms]
+
+    def size(values: dict[sp.Symbol, sp.Expr]) -> float | None:
+        total = 0.0
+        for evaluate in evaluators:
+            value = evaluate(values)
+            if not isinstance(value, complex):
+                return None
+            total += abs(value)
+        return total
+
+    return size

@@ -719,6 +719,13 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   independent rules agreeing, tail negligible) is not a formula: unrequested it rides along with the unchanged
   `unsupported` status, and it is `ok` only for `strategy=numerical` or `auto`. Do not turn a blocked technique into a
   result, route a candidate around the verification, or add a fallback that returns plausible output.
+- `analyze_lagrangian` (`lagrangian.py`) returns its equations of motion once `check_equations` has confirmed them,
+  whatever the search for constants does after: that search (cyclic coordinates, energy, rotation pairs) runs each
+  candidate under `clock.stop_at` until `CONSERVED_SEARCH_SHARE` of the time limit, and lists every candidate it
+  did not reach in `not_searched`, never as "none". A candidate is ruled out early only by `verify.clearly_nonzero`
+  (a stable value above 1e-8 of the size of its terms at 30 and 60 digits); a candidate that survives the screen gets
+  the same `simplify` and verification as before, so the screen can only save time, never add a constant. Do not
+  loosen the screen's threshold or stability test (its tests include zero expressions with huge cancelling terms).
 - The search for hidden constants of motion (`invariants.py`, tool `search_invariants`) shows a constant only if it
   is new (known constants and their products in the ansatz are factored out) and its time derivative on the
   equations of motion is zero symbolically and at random points (`lagrangian.verify_constant`, the same check as for
