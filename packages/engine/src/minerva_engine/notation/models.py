@@ -77,6 +77,9 @@ class NormalizationKind(StrEnum):
     ASSIGNMENT = "assignment"
     SHAPE = "shape"
     FORMAT = "format"
+    # A declared name spelt otherwise in a LaTeX input (`x1` for `x_1`), read as the one symbol it can mean
+    # (`notation.names.alias_in_latex`).
+    DECLARED_NAME = "declared_name"
 
 
 class Normalization(BaseModel):

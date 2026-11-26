@@ -127,9 +127,9 @@ def test_a_misspelt_coordinate_gets_the_name_the_lagrangian_uses(ctx: ToolContex
     out = execute(
         "analyze_lagrangian",
         {
-            "lagrangian": r"\frac12 m \dot{x}_1^2 - k x_1^2",
+            "lagrangian": "1/2*m*x_1_dot^2 - k*x_1^2",
             "coordinates": ["x1"],
-            "format": "latex",
+            "format": "text",
         },
         ctx,
     )

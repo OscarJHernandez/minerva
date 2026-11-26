@@ -98,6 +98,8 @@ def geometry(
         metric_latex=to_latex(geo.g),
         conventions=CONVENTIONS,
         assumptions_used=geo.assumptions_used,
+        cell_syntax=geo.cell_syntax,
+        tensor_syntax=geo.tensor_syntax,
     )
     try:
         det = ws.determinant()

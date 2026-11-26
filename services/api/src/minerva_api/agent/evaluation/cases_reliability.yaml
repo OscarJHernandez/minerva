@@ -636,3 +636,70 @@
           equation: 'C_{3} = - k \cos{\theta} + m r^{3} \dot{\theta}^{2} \cos{\theta} + m r^{2} \dot{r} \dot{\theta} \sin{\theta}'
           quantities: [{name: m, unit: kg}, {name: r, unit: m}, {name: theta, unit: rad}]
           unknown: [C_3, k]
+
+# The two chats of 2026-11-26 (qwen3.5:35b), as the user typed them. In the first the model wrote the metric with
+# `-(1-2M/r)` (LaTeX only) next to `r^2*sin(theta)^2` (text only) and needed nine geometry calls over four turns; in the
+# second it declared `x1` for an `x_1` Lagrangian, wrote `1/2 m1 (...)` in text, and the three-angle ring timed out.
+# Each turn is answered live on the real earlier answers; `max_calls` is the number of calls a turn may take.
+- id: black-hole-metric-chat-2026-11-26
+  category: physics
+  prompt: 'Whats the metric of a black hole, non-rotating?'
+  expected_tool: geometry
+  tools_optional: true
+  max_calls: 2
+  source: "chat report of 2026-11-26: the Schwarzschild metric diag(-(1-2M/r), 1/(1-2M/r), r^2, r^2 sin^2 theta)"
+  followups:
+    - prompt: 'What are the Christoffel symbols of Eq (1)?'
+      expected_tool: geometry
+      args: {includes: {quantities: [christoffel]}}
+      max_calls: 2
+      expect_card: {status: ok}
+      reference:
+        tool: geometry
+        arguments:
+          coordinates: [t, r, theta, phi]
+          metric: [['-(1-2M/r)', '0', '0', '0'], ['0', '(1-2M/r)^{-1}', '0', '0'], ['0', '0', 'r^2', '0'], ['0', '0', '0', 'r^2*sin(theta)^2']]
+          quantities: [christoffel]
+    - prompt: 'What is the geodesic equation then? Show me the 4 equations'
+      expected_tool: geometry
+      args: {includes: {quantities: [geodesics]}}
+      max_calls: 2
+      expect_card: {status: ok}
+      reference:
+        tool: geometry
+        arguments:
+          coordinates: [t, r, theta, phi]
+          metric: [['-(1-2M/r)', '0', '0', '0'], ['0', '(1-2M/r)^{-1}', '0', '0'], ['0', '0', 'r^2', '0'], ['0', '0', '0', 'r^2*sin(theta)^2']]
+          quantities: [geodesics]
+
+- id: three-particles-on-springs-chat-2026-11-26
+  category: physics
+  prompt: 'Whats the Lagrangian for 3 particles on a triangle connected by springs'
+  expected_tool: analyze_lagrangian
+  tools_optional: true
+  max_calls: 2
+  expect_card: {status: ok}
+  reference:
+    tool: analyze_lagrangian
+    arguments:
+      coordinates: [x1, y1, x2, y2, x3, y3]
+      format: latex
+      lagrangian: '\frac{1}{2} m_1 (\dot{x}_1^2 + \dot{y}_1^2) + \frac{1}{2} m_2 (\dot{x}_2^2 + \dot{y}_2^2) + \frac{1}{2} m_3 (\dot{x}_3^2 + \dot{y}_3^2) - \frac{k}{2} \left[ \left(\sqrt{(x_2-x_1)^2 + (y_2-y_1)^2} - a\right)^2 + \left(\sqrt{(x_3-x_2)^2 + (y_3-y_2)^2} - a\right)^2 + \left(\sqrt{(x_1-x_3)^2 + (y_1-y_3)^2} - a\right)^2 \right]'
+      time: t
+  source: "chat report of 2026-11-26: L = sum m_i |v_i|^2 / 2 - (k/2) sum over the three pairs (|r_i - r_j| - a)^2"
+  followups:
+    - prompt: 'Lets put them on a circle'
+      expected_tool: analyze_lagrangian
+      tools_optional: true
+      max_calls: 2
+    - prompt: 'Now, what are the equations of motion?'
+      expected_tool: analyze_lagrangian
+      max_calls: 2
+      expect_card: {status: ok}
+      reference:
+        tool: analyze_lagrangian
+        arguments:
+          coordinates: [theta1, theta2, theta3]
+          format: latex
+          lagrangian: '\frac{1}{2} R^2 (m_1 \dot{\theta}_1^2 + m_2 \dot{\theta}_2^2 + m_3 \dot{\theta}_3^2) - \frac{k}{2} \left[ \left(2R\sin\frac{\theta_2-\theta_1}{2} - a\right)^2 + \left(2R\sin\frac{\theta_3-\theta_2}{2} - a\right)^2 + \left(2R\sin\frac{\theta_1-\theta_3}{2} - a\right)^2 \right]'
+          time: t

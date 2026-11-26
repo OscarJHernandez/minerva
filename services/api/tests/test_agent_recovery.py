@@ -11,6 +11,7 @@ from minerva_api.agent.recovery import (
     FailureClass,
     canonical_key,
     classify,
+    failure_signature,
     rerun_arguments,
 )
 from minerva_api.agent.replay import ReplayLLM, call, say
@@ -128,9 +129,63 @@ def test_a_text_metric_sent_as_latex_is_read_as_text_once(ctx: ToolContext) -> N
     assert step["status"] == "ok" and step["policy"] == "format_switch"
     assert len(message["debug"]["llm_calls"]) == 2  # no retry round trip through the model
     (card,) = cards(message)
-    assert card["data"]["request"]["format"] == "text"
+    # A grid is re-read under `auto`: one syntax (text) reads every entry here, so nothing is split.
+    assert card["data"]["request"]["format"] == "auto"
+    assert card["data"]["result"]["cell_syntax"] is None
     ricci = card["data"]["result"]["quantities"][0]
     assert ricci["kind"] == "ricci" and ricci["all_zero"] is True
+
+
+# The Schwarzschild chat of 2026-11-26: `-(1-2M/r)` is LaTeX only and `r^2*sin(theta)^2` text only, so neither
+# syntax reads the whole grid. Explicit `latex` fails, the re-run under `auto` reads it entry by entry.
+CHAT_METRIC = {
+    **TRIAL_METRIC,
+    "metric": [
+        ["-(1-2M/r)", "0", "0", "0"],
+        ["0", "(1-2M/r)^{-1}", "0", "0"],
+        ["0", "0", "r^2", "0"],
+        ["0", "0", "0", "r^2*sin(theta)^2"],
+    ],
+    "quantities": ["christoffel"],
+}
+
+
+def test_a_mixed_metric_sent_as_latex_is_read_entry_by_entry_once(ctx: ToolContext) -> None:
+    llm = ReplayLLM([call("geometry", CHAT_METRIC), say("Here are the Christoffel symbols.")])
+    message = final(play(llm, ctx))
+    (step,) = message["trace"]
+    assert step["status"] == "ok" and step["policy"] == "format_switch"
+    assert "read entry by entry" in step["for_model"] and "g[3][3]" in step["for_model"]
+    (card,) = cards(message)
+    assert card["data"]["result"]["cell_syntax"][3][3] == "text"
+
+
+def test_a_mixed_metric_under_auto_succeeds_on_the_first_call(ctx: ToolContext) -> None:
+    out = execute("geometry", {**CHAT_METRIC, "format": "auto"}, ctx)
+    assert out.status == "ok", out.for_model
+    assert rerun_arguments("geometry", {**CHAT_METRIC, "format": "auto"}, out) is None
+
+
+def test_a_failed_re_read_is_reported_to_the_model(ctx: ToolContext) -> None:
+    # `r0^2` reads as 0 in LaTeX and as r0**2 in text: the grid cannot be split, so the re-run fails too, and
+    # the model is told what it said instead of being left with "use format text".
+    metric = [row[:] for row in CHAT_METRIC["metric"]]
+    metric[2][2] = "r0^2"
+    llm = ReplayLLM(
+        [call("geometry", {**CHAT_METRIC, "metric": metric}), say("It could not be read.")]
+    )
+    message = final(play(llm, ctx))
+    (step,) = message["trace"]
+    assert step["status"] == "parse_error" and step["policy"] is None
+    assert "re-read with format auto, it failed too" in step["for_model"], step["for_model"]
+
+
+def test_geometry_auto_and_latex_are_different_calls() -> None:
+    from minerva_api.agent.recovery import canonical_key
+
+    auto = canonical_key("geometry", {**CHAT_METRIC, "format": "auto"})
+    latex = canonical_key("geometry", {**CHAT_METRIC, "format": "latex"})
+    assert auto != latex
 
 
 def test_a_latex_metric_with_a_real_error_is_not_switched(ctx: ToolContext) -> None:
@@ -264,3 +319,60 @@ def test_a_product_written_like_a_call_stays_latex(ctx: ToolContext) -> None:
     )
     (step,) = message["trace"]
     assert step["status"] == "ok" and step["policy"] is None and "$x$" in step["for_model"]
+
+
+# --- the failure budget counts lack of progress, not attempts -----------------------------------------------
+# The Schwarzschild chat of 2026-11-26: `sin(` fixed, then told about `theta`, then `2M`: three failures, each about
+# something new, and the fourth call (correct) was refused unrun. A failure whose (code, symbols) was not reported
+# before in the turn does not use up the budget; the same one again does.
+
+SPRING = (
+    "1/2*m*v^2 - k*x^2"  # no velocity of an undeclared name: the only problem is the declared one
+)
+
+
+def _missing(name: str, variant: int = 0) -> dict[str, object]:
+    # the same mistake (a declared coordinate the Lagrangian does not use), spelt so that each call is distinct
+    return {"lagrangian": SPRING + " " * variant, "coordinates": [name], "format": "text"}
+
+
+def test_a_failure_signature_is_the_code_and_the_symbols(ctx: ToolContext) -> None:
+    out = execute("analyze_lagrangian", _missing("q"), ctx)
+    assert failure_signature(out) == ("declared_name_absent", ("q",))
+    assert failure_signature(execute("simplify", SIMPLIFY, ctx)) is None
+
+
+def test_a_model_converging_on_its_input_is_not_cut_off(ctx: ToolContext) -> None:
+    replies = [
+        call("analyze_lagrangian", _missing("q")),
+        call("analyze_lagrangian", _missing("w")),
+        call("analyze_lagrangian", _missing("z")),
+        call(
+            "analyze_lagrangian",
+            {"lagrangian": "1/2*m*x_dot^2 - k*x^2", "coordinates": ["x"], "format": "text"},
+        ),
+        say("Done."),
+    ]
+    limits = AgentLimits(retry_delay_seconds=0, max_failures_per_tool=2)
+    message = final(play(ReplayLLM(replies), ctx, limits=limits))
+    statuses = [t["status"] for t in message["trace"]]
+    assert statuses == ["parse_error", "parse_error", "parse_error", "ok"]
+    assert all(t["policy"] != "budget_exhausted" for t in message["trace"])
+
+
+def test_a_model_alternating_two_mistakes_still_runs_out(ctx: ToolContext) -> None:
+    replies = [call("analyze_lagrangian", _missing("qw"[i % 2], i)) for i in range(8)]
+    limits = AgentLimits(retry_delay_seconds=0, max_failures_per_tool=2)
+    message = final(play(ReplayLLM([*replies, say("Done.")]), ctx, limits=limits))
+    trace = message["trace"]
+    # two new mistakes are free, then each repeat counts: refused at the fifth call, as with two strikes before
+    assert [t["status"] for t in trace[:4]] == ["parse_error"] * 4
+    assert trace[4]["policy"] == "budget_exhausted"
+    assert len(trace) <= 6
+
+
+def test_a_new_mistake_every_call_is_still_bounded_by_the_turn_limits(ctx: ToolContext) -> None:
+    replies = [call("analyze_lagrangian", _missing(f"q{i}")) for i in range(20)]
+    message = final(play(ReplayLLM([*replies, say("Done.")]), ctx))
+    assert len(message["trace"]) <= 12
+    assert message["stop_reason"] in ("step_limit", "tool_call_limit", "repeated_calls")

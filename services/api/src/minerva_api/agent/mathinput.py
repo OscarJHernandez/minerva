@@ -13,16 +13,15 @@ suggestions are the user's names and live only in the stored message.
 from __future__ import annotations
 
 import json
-import re
 from typing import Any, Literal
 
-from minerva_engine.notation.derivatives import DERIVATIVE_NAME
 from minerva_engine.notation.models import (
     InputDiagnostic,
     InputReading,
     Normalization,
     NormalizationKind,
 )
+from minerva_engine.notation.syntax import choose_syntax
 from minerva_engine.notation.transport import (
     clean_transport,
     localize_symbols,
@@ -34,13 +33,15 @@ from minerva_engine.notation.transport import (
 MATH_FIELDS = ("latex", "expression", "equation", "lagrangian", "hamiltonian", "integrand")
 # Arguments that are lists of such strings.
 MATH_LIST_FIELDS = ("equations",)
+# Arguments that are grids of entries (a metric; tensor components), read by the engine under `format: auto`
+# one syntax for the whole grid when that reads every entry, otherwise entry by entry where unambiguous.
+GRID_FIELDS = ("metric",)
 
 SyntaxChoice = Literal["auto", "latex", "text"]
 FORMAT_DESCRIPTION = (
     "`auto` (default) reads text syntax (`theta_dot`, `*`, `sin(x)`) as text and anything with a "
     "backslash as LaTeX; set `latex` or `text` to say which."
 )
-_TEXT_MARKERS = re.compile(rf"\*|{DERIVATIVE_NAME}|\b[A-Za-z]\w*\s*\(")
 
 # Tools that read `format: auto` by default, and tools whose expression field is text syntax by nature.
 AUTO_TOOLS = frozenset(
@@ -54,7 +55,7 @@ def resolve_syntax(source: str, requested: SyntaxChoice) -> Literal["latex", "te
     """Choose between the two strict parsers; the input itself is never rewritten."""
     if requested != "auto":
         return requested
-    return "text" if "\\" not in source and _TEXT_MARKERS.search(source) else "latex"
+    return choose_syntax(source)
 
 
 def strip_assignment(source: str, name: str) -> str:

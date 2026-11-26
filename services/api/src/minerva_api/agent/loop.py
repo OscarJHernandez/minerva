@@ -54,7 +54,9 @@ from .recovery import (
     FailureClass,
     canonical_key,
     classify,
+    failure_signature,
     rerun_arguments,
+    rerun_summary,
 )
 from .refs import (
     ResultStore,
@@ -833,6 +835,8 @@ async def _run_turn(
     # diagnostic codes already seen per tool (a new code means the model is converging).
     failed_seen: dict[str, str] = {}
     fail_counts: dict[str, int] = {}
+    # (code, symbols) of the recoverable failures seen per tool this turn: a new one is progress, not a strike.
+    failure_signatures: dict[str, set[tuple[str, tuple[str, ...]]]] = {}
     codes_seen: set[tuple[str, str]] = set()
     stop = StopReason.COMPLETED
     failure: str | None = None
@@ -1192,6 +1196,7 @@ async def _run_turn(
                 ):
                     refusal = _error(call.name, NEEDS_CHOICE, ErrorCategory.NEEDS_USER_CHOICE.value)
                 policy: str | None = None
+                fresh_signature = False  # this call failed about something not reported before
                 if (
                     refusal is None
                     and fail_counts.get(call.name, 0) >= limits.max_failures_per_tool
@@ -1328,6 +1333,12 @@ async def _run_turn(
                                 )
                                 output, arguments, policy = retried, alternative[0], alternative[1]
                                 recovered_key = canonical_key(call.name, arguments)
+                            elif retried is not None:
+                                # Say what the other reading found too: "use format text" is no advice
+                                # when text cannot read the input either (`2M` in a text cell).
+                                output.for_model += "\n" + rerun_summary(
+                                    alternative[0]["format"], retried
+                                )
                     except TimeoutError:
                         output = _tool_failure(
                             call.name,
@@ -1353,7 +1364,15 @@ async def _run_turn(
                     if failure_class is not None and failure_class is not FailureClass.TIMEOUT:
                         if output.arguments_valid:
                             failed_seen[key] = output.for_model
-                        if failure_class in BUDGETED:
+                        signature = failure_signature(output)
+                        reported = failure_signatures.setdefault(call.name, set())
+                        if signature is not None and signature not in reported:
+                            # A failure about something not reported before is the model converging on a
+                            # readable input: it does not use up the budget. The same one again does, so a
+                            # model cycling through the same mistakes still ends in budget_exhausted.
+                            reported.add(signature)
+                            fresh_signature = True
+                        elif failure_class in BUDGETED:
                             fail_counts[call.name] = fail_counts.get(call.name, 0) + 1
                     elif output.status == "ok":
                         fail_counts[call.name] = 0  # consecutive failures: a result starts afresh
@@ -1520,8 +1539,9 @@ async def _run_turn(
                 # satisfied" are what the engine established. Only errors, refused or invalid calls
                 # and unverified candidates count towards the limit.
                 answered = output.status in ANSWER_STATUSES
-                new_code = bool(output.reason_code) and (
-                    (call.name, output.reason_code or "") not in codes_seen
+                new_code = fresh_signature or (
+                    bool(output.reason_code)
+                    and (call.name, output.reason_code or "") not in codes_seen
                 )
                 if output.reason_code:
                     codes_seen.add((call.name, output.reason_code))

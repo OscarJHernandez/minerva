@@ -1,4 +1,4 @@
-"""Argument shapes a model gets wrong in predictable ways, repaired from a closed list.
+r"""Argument shapes a model gets wrong in predictable ways, repaired from a closed list.
 
 A small model sends `"X, Y, s"` where the schema wants `["X", "Y", "s"]`, a JSON object as a string, an
 `expression` where the tool's one formula field is `lagrangian`, or one equation where a list is expected.
@@ -13,7 +13,8 @@ Repairs, in this order, each only when the schema decides the target:
 * a string given where a list of names is wanted is split on commas (`"X, Y, s"`, `"[X, Y]"`) when every piece
   is a valid name;
 * a string given where a list of formulas is wanted becomes a one-item list;
-* a JSON string given where an object or list is wanted is parsed, a backslash that starts LaTeX (`\dot`,
+* a JSON string given where an object or list is wanted is parsed (also when its quotes are escaped once more,
+  `[\"t\"]`), a backslash that starts LaTeX (`\dot`,
   `\theta`) kept as a backslash rather than read as a JSON escape;
 * a number given where text is wanted becomes its text (`_coerce_numbers`, the same rule `execute` applies, so
   that validity, the trace and the call key agree).
@@ -123,7 +124,14 @@ def repair_arguments(
             try:
                 parsed = json.loads(_keep_latex_backslashes(value))
             except ValueError:
-                continue
+                # Encoded twice: `[\"t\", \"r\"]` (the quotes still escaped). Undo the escaped quotes once,
+                # nothing else, and the result still has to validate against the schema.
+                if '\\"' not in value:
+                    continue
+                try:
+                    parsed = json.loads(_keep_latex_backslashes(value.replace('\\"', '"')))
+                except ValueError:
+                    continue
             if isinstance(parsed, (list, dict)):
                 out[name] = parsed
                 notes.append(

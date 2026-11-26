@@ -161,6 +161,18 @@ export function GeometryPanel({
           >
             {copied ? "Copied" : "Copy metric LaTeX"}
           </button>
+          {result.cell_syntax && (
+            <p className="mt-1 text-xs text-muted" data-testid="cell-syntax">
+              Read entry by entry: text syntax for{" "}
+              {result.cell_syntax
+                .flatMap((row, i) =>
+                  row.map((syntax, j) => (syntax === "text" ? `g[${i}][${j}]` : null)),
+                )
+                .filter((cell): cell is string => cell !== null)
+                .join(", ") || "none"}
+              , LaTeX for the others. Check the metric as read above.
+            </p>
+          )}
         </div>
       )}
 

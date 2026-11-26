@@ -18,6 +18,7 @@ from ..errors import MinervaMathError, ParseError, UnsupportedInput, diagnostic_
 from ..latexparse import reject_text_syntax_in
 from ..models import ExpressionInput, Limits, Status
 from ..notation.models import InputCode, InputDiagnostic
+from ..notation.syntax import Syntax, choose_syntax
 from .models import GeometryInput
 from .tensors import Tensor
 
@@ -48,6 +49,8 @@ class Geometry:
     assumptions: dict[str, list[str]]
     tensor: Tensor | None = None
     assumptions_used: list[str] = field(default_factory=list)
+    cell_syntax: list[list[Syntax]] | None = None
+    tensor_syntax: list[Syntax] | None = None
 
     @property
     def symbols(self) -> list[sp.Symbol]:
@@ -106,18 +109,23 @@ def build_geometry(data: GeometryInput, limits: Limits, max_dimension: int) -> G
         cells = [c for row in data.metric for c in row]
         cells += list(data.tensor.components) if data.tensor is not None else []
         ctx = _Parser(data, limits, assumptions, functions, parse_expression)
-        if data.format == "latex":
-            # The same refusal every cell gets from parse_latex, checked over all of them first, so a metric written
-            # in text syntax is refused with the typed reason (and the chat can re-read it as text) instead of the
-            # generic error of whichever cell happens to be parsed first (`^(-1)`: "expected an exponent"). Every
-            # problem in every cell is named at once: one at a time cost the chat a tool call per problem.
-            reject_text_syntax_in(cells)
-        else:
-            _reject_text_products(cells, ctx)
+        whole: Syntax = choose_syntax(" ".join(cells)) if data.format == "auto" else data.format
+        try:
+            _check_cells(cells, ctx, whole)
+            ctx.syntax = {}
+            g = sp.Matrix(n, n, lambda i, j: ctx.parse(data.metric[i][j]))
+            tensor = _parse_tensor(data, n, ctx) if data.tensor is not None else None
+        except MinervaMathError:
+            if data.format != "auto":
+                raise
+            split = _split_syntax(cells, ctx)
+            if split is None:
+                raise
+            ctx.syntax = split
+            g = sp.Matrix(n, n, lambda i, j: ctx.parse(data.metric[i][j]))
+            tensor = _parse_tensor(data, n, ctx) if data.tensor is not None else None
         builder = Builder(assumptions, limits, functions=functions)
         coords = [builder.symbol(c) for c in names]
-        g = sp.Matrix(n, n, lambda i, j: ctx.parse(data.metric[i][j]))
-        tensor = _parse_tensor(data, n, ctx) if data.tensor is not None else None
     except GeometryError:
         raise
     except MinervaMathError as exc:
@@ -150,7 +158,56 @@ def build_geometry(data: GeometryInput, limits: Limits, max_dimension: int) -> G
         assumptions=assumptions,
         tensor=tensor,
         assumptions_used=_describe(assumptions, names, functions),
+        cell_syntax=(
+            [[ctx.syntax[data.metric[i][j]] for j in range(n)] for i in range(n)]
+            if ctx.syntax
+            else None
+        ),
+        tensor_syntax=(
+            [ctx.syntax[c] for c in data.tensor.components]
+            if ctx.syntax and data.tensor is not None
+            else None
+        ),
     )
+
+
+def _check_cells(cells: list[str], ctx: _Parser, syntax: Syntax) -> None:
+    """Name every problem of every entry at once, for one syntax.
+
+    LaTeX: the same refusal every cell gets from parse_latex, checked over all of them first, so a metric written
+    in text syntax is refused with the typed reason instead of the generic error of whichever cell happens to be
+    parsed first (`^(-1)`: "expected an exponent"). Text: every product written without `*`.
+    """
+    ctx.whole = syntax
+    if syntax == "latex":
+        reject_text_syntax_in(cells)
+    else:
+        _reject_text_products(cells, ctx)
+
+
+def _split_syntax(cells: list[str], ctx: _Parser) -> dict[str, Syntax] | None:
+    """Under `format: auto`, the parser for each entry when one syntax does not read them all, or None.
+
+    An entry is assigned only if that is unambiguous: one parser reads it and the other refuses it, or both read
+    it to the same expression. An entry both read *differently* (`r0^2` is 0 in LaTeX and r0**2 in text, `pi` is
+    i*p and pi) or neither reads leaves the whole input to the single syntax of before, and its errors. Entries
+    that read the same either way are labelled by the per-entry rule (`choose_syntax`).
+    """
+    split: dict[str, Syntax] = {}
+    for cell in dict.fromkeys(cells):
+        readings: dict[Syntax, sp.Expr] = {}
+        for syntax in ("latex", "text"):
+            try:
+                readings[syntax] = ctx.parse(cell, syntax)
+            except (MinervaMathError, RecursionError):
+                continue
+        if len(readings) == 1:
+            split[cell] = next(iter(readings))
+        elif len(readings) == 2 and readings["latex"] == readings["text"]:
+            split[cell] = choose_syntax(cell)
+        else:
+            return None
+    return split
 
 
 def _reject_text_products(cells: list[str], ctx: _Parser) -> None:
@@ -204,9 +261,13 @@ class _Parser:
         self.functions = functions
         self._parse = parse_expression
 
-    def parse(self, text: str) -> sp.Expr:
+        self.whole: Syntax = "latex" if data.format == "auto" else data.format
+        self.syntax: dict[str, Syntax] = {}  # per entry, when an `auto` input was split
+
+    def parse(self, text: str, syntax: Syntax | None = None) -> sp.Expr:
+        chosen = syntax or self.syntax.get(text) or self.whole
         return self._parse(
-            ExpressionInput(input=text, format=self.data.format, assumptions=self.assumptions),
+            ExpressionInput(input=text, format=chosen, assumptions=self.assumptions),
             self.limits,
             functions=self.functions,
             strict_calls=True,
