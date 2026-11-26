@@ -367,10 +367,10 @@
     }
   },
   "measurements": {
-    "adversarial_total_s": 1.39,
-    "adversarial_median_ms": 14.2,
-    "adversarial_max_ms": 112.6,
-    "report_wall_s": 2.22,
-    "peak_rss_mb": 185.5
+    "adversarial_total_s": 1.38,
+    "adversarial_median_ms": 12.2,
+    "adversarial_max_ms": 110.5,
+    "report_wall_s": 12.72,
+    "peak_rss_mb": 199.4
   }
 }
