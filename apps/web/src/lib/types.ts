@@ -774,7 +774,7 @@ export interface GeometryTensor {
 export interface GeometryRequest {
   coordinates: string[];
   metric: string[][];
-  format?: "latex" | "text";
+  format?: "latex" | "text" | "auto";
   assumptions: Assumptions;
   functions: GeometryFunction[];
   quantities: GeometryQuantity[];
@@ -866,6 +866,9 @@ export interface GeometryResult {
   message: string;
   duration_ms: number;
   calculation_id?: string | null;
+  /** Under format auto, when entries were read in different syntaxes: the parser of each metric entry. */
+  cell_syntax?: ("latex" | "text")[][] | null;
+  tensor_syntax?: ("latex" | "text")[] | null;
 }
 
 // --- vector calculus ------------------------------------------------------------------------

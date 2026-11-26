@@ -328,14 +328,16 @@ class GeometryArgs(BaseModel):
     metric: list[list[str]] = Field(
         min_length=1,
         max_length=4,
-        description="The metric components g_{mu nu} as an n by n grid of strings in one syntax (see `format`), one row per "
-        'coordinate, e.g. [["-(1-2M/r)", "0"], ["0", "(1-2M/r)^{-1}"]]. Use \\sin^2\\theta, '
+        description="The metric components g_{mu nu} as an n by n grid of strings (see `format`), one row per "
+        'coordinate, e.g. [["-(1-2M/r)", "0"], ["0", "(1-2M/r)^{-1}"]] (LaTeX). Use \\sin^2\\theta, '
         "not \\sin 2\\theta. Ask the user for the metric; never invent one.",
     )
     format: SyntaxChoice = Field(
         default="auto",
         description="Syntax of the `metric` entries and `tensor` components: LaTeX (\\sin^2\\theta, \\frac{2M}{r}) "
-        "or text (sin(theta)^2, 2*M/r), the same for every entry. " + FORMAT_DESCRIPTION,
+        "or text (sin(theta)^2, 2*M/r). `auto` (default) reads the grid in one syntax when that reads every entry, "
+        "otherwise each entry in the one syntax that reads it (an entry both read differently is refused); "
+        "`latex` or `text` applies to every entry.",
     )
     assumptions: dict[str, list[str]] = Field(
         default_factory=dict,
@@ -1639,16 +1641,11 @@ def _strategy_text(result: IntegrateResult) -> str:
 
 
 def geometry_request(args: GeometryArgs) -> GeometryInput:
-    """The engine request; `format: auto` picks one strict parser for the whole metric as written (never rewritten).
-
-    Any backslash anywhere makes it LaTeX; text markers (`*`, `sin(`) with no backslash make it text, so a metric
-    sent as `2*M/r` and `sin(theta)^2` is read as text instead of failing three times as LaTeX.
+    """The engine request. `format: auto` is passed on: the engine reads the grid in one strict syntax when that reads
+    every entry (a backslash anywhere: LaTeX; `*` or `sin(` with no backslash: text), and otherwise entry by entry
+    where each entry is read by exactly one parser or identically by both (`geometry/setup.py`); never rewritten.
     """
-    cells = [str(c) for row in args.metric for c in row]
-    if args.tensor is not None:
-        cells += [str(c) for c in args.tensor.components]
-    syntax = resolve_syntax(" ".join(cells), args.format)
-    return GeometryInput(**args.model_dump(exclude={"format"}), format=syntax)
+    return GeometryInput(**args.model_dump())
 
 
 def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
@@ -1676,6 +1673,18 @@ def run_geometry(args: GeometryArgs, ctx: ToolContext) -> ToolOutput:
     elif result.status.value == "ok":
         head += "signature=NOT DETERMINED (do not call the metric Lorentzian or Riemannian); "
     lines = [head + result.message]
+    if result.cell_syntax:
+        text_cells = [
+            f"g[{i}][{j}]"
+            for i, row in enumerate(result.cell_syntax)
+            for j, syntax in enumerate(row)
+            if syntax == "text"
+        ]
+        lines.append(
+            "- read entry by entry (format auto): text syntax for "
+            + (", ".join(text_cells) or "none")
+            + ", LaTeX for the others; check the metric as read above"
+        )
     if result.status.value == "ok" or result.quantities:
         lines.extend(f"- convention: {c}" for c in result.conventions)
         lines.extend(f"- assumption: {a}" for a in result.assumptions_used)

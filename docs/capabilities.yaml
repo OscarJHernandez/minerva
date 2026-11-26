@@ -1072,6 +1072,7 @@ capabilities:
     limits:
       - Explicit metrics only, in at most 4 coordinates, with real coordinates. No abstract manifolds, charts or atlases, tetrads, spin connections or differential forms; the connection is always Levi-Civita.
       - Unspecified functions are real functions of the coordinates; an undeclared f(r) is refused instead of being read as f times r.
+      - With format auto, a metric whose entries are not all one syntax is read entry by entry only when every entry is read by exactly one parser or identically by both; an entry the two parsers read differently (r0^2 is 0 in LaTeX) makes the whole metric one syntax again, and its errors stand.
       - The signature is reported only when the declared assumptions decide the sign of each entry of a diagonal metric. Where a determinant or denominator vanishes is reported as a restriction on the coordinates, not as a statement about curvature singularities; root, logarithm and branch domains are not analysed.
       - Numerical agreement is evidence, not proof. A symbolic proof (a zero test that succeeded) is shown separately and is not attempted for very large expressions.
       - Geodesic equations are symbolic; they are not integrated numerically.
@@ -1098,6 +1099,17 @@ capabilities:
           - ["0", "0", "0", 'r^2 \sin^2\theta']
         assumptions: { M: [positive], r: [positive] }
         quantities: [ricci, kretschmann]
+      - id: geometry-mixed-syntax
+        title: A metric whose entries are written in two syntaxes, read entry by entry
+        op: geometry
+        format: auto
+        coordinates: [t, r, theta, phi]
+        metric:
+          - ["-(1-2M/r)", "0", "0", "0"]
+          - ["0", "(1-2M/r)^{-1}", "0", "0"]
+          - ["0", "0", "r^2", "0"]
+          - ["0", "0", "0", "r^2*sin(theta)^2"]
+        quantities: [christoffel]
       - id: geometry-geodesics
         title: Geodesic equations of the plane in polar coordinates
         op: geometry

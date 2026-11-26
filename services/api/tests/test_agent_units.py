@@ -1499,9 +1499,9 @@ SCHWARZSCHILD_TEXT = {
 def test_geometry_reads_a_text_syntax_metric_as_text(ctx: ToolContext) -> None:
     out = execute("geometry", SCHWARZSCHILD_TEXT, ctx)
     assert out.status == "ok", out.for_model
-    assert (
-        out.card.data["request"]["format"] == "text"
-    )  # the card's buttons re-post it in the same syntax
+    # `auto` is resolved by the engine; the card's buttons re-post it as `auto` and get the same reading
+    assert out.card.data["request"]["format"] == "auto"
+    assert out.card.data["result"]["cell_syntax"] is None  # one syntax (text) read every entry
     by_kind = {q["kind"]: q for q in out.card.data["result"]["quantities"]}
     assert by_kind["ricci"]["all_zero"] is True
     assert by_kind["kretschmann"]["scalar_text"] == "48*M**2/r**6"
@@ -1511,12 +1511,10 @@ def test_geometry_keeps_latex_and_an_explicit_format(ctx: ToolContext) -> None:
     from minerva_api.agent.tools import GeometryArgs, geometry_request
 
     assert (
-        geometry_request(GeometryArgs(**SPHERE_ARGS)).format == "latex"
-    )  # a backslash anywhere: LaTeX
-    plain = {**SPHERE_ARGS, "metric": [["a^2", "0"], ["0", "a^2"]]}
-    assert (
-        geometry_request(GeometryArgs(**plain)).format == "latex"
-    )  # no text marker: LaTeX, as before
+        geometry_request(GeometryArgs(**SPHERE_ARGS)).format == "auto"
+    )  # passed on, read by the engine
+    out = execute("geometry", SPHERE_ARGS, ctx)
+    assert out.status == "ok" and out.card.data["result"]["cell_syntax"] is None
     forced = geometry_request(GeometryArgs(**{**SCHWARZSCHILD_TEXT, "format": "latex"}))
     assert forced.format == "latex"  # an explicit choice is never overridden
     out = execute("geometry", {**SCHWARZSCHILD_TEXT, "format": "latex"}, ctx)
@@ -1525,14 +1523,25 @@ def test_geometry_keeps_latex_and_an_explicit_format(ctx: ToolContext) -> None:
     )  # and the LaTeX reader still refuses text, with the fix in its message
 
 
-def test_geometry_never_mixes_syntaxes_across_entries(ctx: ToolContext) -> None:
-    # one backslash makes the whole metric LaTeX, so `2*M/r` beside `\sin^2\theta` is read by the LaTeX reader only
-    from minerva_api.agent.tools import GeometryArgs, geometry_request
-
+def test_geometry_reads_a_grid_entry_by_entry_only_when_one_syntax_cannot(ctx: ToolContext) -> None:
+    # One backslash makes the whole metric LaTeX, but LaTeX cannot read `(1-2*M/r)^(-1)`: each entry then goes to
+    # the parser that reads it, and the metric as read is the text one (same Kretschmann scalar).
     mixed = {**SCHWARZSCHILD_TEXT}
     mixed["metric"] = [row[:] for row in SCHWARZSCHILD_TEXT["metric"]]
     mixed["metric"][3][3] = "r^2 \\sin^2\\theta"
-    assert geometry_request(GeometryArgs(**mixed)).format == "latex"
+    out = execute("geometry", mixed, ctx)
+    assert out.status == "ok", out.for_model
+    result = out.card.data["result"]
+    assert result["cell_syntax"][1][1] == "text" and result["cell_syntax"][3][3] == "latex"
+    text = execute("geometry", SCHWARZSCHILD_TEXT, ctx).card.data["result"]
+    assert result["metric_latex"] == text["metric_latex"]
+    by_kind = {q["kind"]: q for q in result["quantities"]}
+    assert by_kind["kretschmann"]["scalar_text"] == "48*M**2/r**6"
+    # and when LaTeX reads every entry, nothing is split
+    latex = {**mixed, "metric": [row[:] for row in mixed["metric"]]}
+    latex["metric"][1][1] = "(1-2*M/r)^{-1}"
+    out = execute("geometry", latex, ctx)
+    assert out.status == "ok" and out.card.data["result"]["cell_syntax"] is None
 
 
 def test_geometry_tool_never_leaks_a_state_between_calls(ctx: ToolContext) -> None:

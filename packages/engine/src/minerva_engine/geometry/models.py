@@ -75,7 +75,9 @@ class TensorField(BaseModel):
 class GeometryInput(BaseModel):
     coordinates: list[str] = Field(min_length=1, max_length=HARD_MAX_DIMENSION)
     metric: list[list[Cell]] = Field(min_length=1, max_length=HARD_MAX_DIMENSION)
-    format: Literal["latex", "text"] = "latex"
+    # `auto`: the syntax of the whole grid as before when one syntax reads every entry; otherwise each entry by
+    # the one strict parser that reads it, and only if no entry is read differently by both (`setup.py`).
+    format: Literal["latex", "text", "auto"] = "latex"
     assumptions: dict[str, list[str]] = Field(default_factory=dict)
     functions: list[FunctionDecl] = Field(default_factory=list, max_length=6)
     quantities: list[QuantityName] = Field(min_length=1, max_length=len(QUANTITIES))
@@ -182,3 +184,7 @@ class GeometryResult(BaseModel):
     # Why the input was refused, typed (a text-syntax metric read as LaTeX), so the chat can re-read it once with
     # the other strict parser. Only the code is ever logged.
     diagnostic: InputDiagnostic | None = None
+    # Under `format: auto`, when the entries were not all one syntax: the parser that read each metric entry
+    # (row by row) and each tensor component. None when one syntax read the whole input.
+    cell_syntax: list[list[Literal["latex", "text"]]] | None = None
+    tensor_syntax: list[Literal["latex", "text"]] | None = None

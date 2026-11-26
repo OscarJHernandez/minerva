@@ -55,6 +55,7 @@ from .recovery import (
     canonical_key,
     classify,
     rerun_arguments,
+    rerun_summary,
 )
 from .refs import (
     ResultStore,
@@ -1328,6 +1329,12 @@ async def _run_turn(
                                 )
                                 output, arguments, policy = retried, alternative[0], alternative[1]
                                 recovered_key = canonical_key(call.name, arguments)
+                            elif retried is not None:
+                                # Say what the other reading found too: "use format text" is no advice
+                                # when text cannot read the input either (`2M` in a text cell).
+                                output.for_model += "\n" + rerun_summary(
+                                    alternative[0]["format"], retried
+                                )
                     except TimeoutError:
                         output = _tool_failure(
                             call.name,

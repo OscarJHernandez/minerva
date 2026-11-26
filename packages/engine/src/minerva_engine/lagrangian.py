@@ -41,8 +41,9 @@ from .notation.models import (
     InputDiagnostic,
     InputReading,
     Normalization,
+    NormalizationKind,
 )
-from .notation.names import near_misses
+from .notation.names import alias_in_latex, clean_name, near_misses
 from .notation.time_symbol import time_clash, time_clash_message
 from .restrictions import determinant_conditions
 from .textparse import parse_text
@@ -167,22 +168,41 @@ def derive(
     other spellings of a velocity of a declared coordinate (`qdot`, `dq_dt`, `q dot`) are read as that
     symbol by `notation.derivatives` and reported in `Derivation.normalizations`.
     """
+    notes: list[Normalization] = [
+        Normalization(
+            kind=NormalizationKind.DECLARED_NAME,
+            source=given,
+            target=clean_name(given),
+            note="the LaTeX spelling of the same name",
+        )
+        for given in coordinates
+        if clean_name(given) != given
+    ]
+    coordinates = [clean_name(c) for c in coordinates]
     _check_coordinates(coordinates)
     clash = time_clash(coordinates, time, source=latex)
     if clash is not None:
         raise DerivationError(Status.PARSE_ERROR, time_clash_message(clash), clash)
     reject_equation(latex, "Lagrangian")
     started = time_module.perf_counter()
-    notes: list[Normalization] = []
     try:
         if format == "text":
             latex, joined = join_spaced_keywords(latex, coordinates)
             notes.extend(joined)
-            L = parse_text(latex, assumptions, limits)
+            parsed = parse_text(latex, assumptions, limits)
         else:
             refuse_latex_letter_runs(latex, coordinates)
-            L = parse_latex(latex, assumptions, limits)
-        resolved = resolve_derivatives(L, coordinates, time, assumptions)
+            parsed = parse_latex(latex, assumptions, limits)
+        resolved = resolve_derivatives(parsed, coordinates, time, assumptions)
+        names = {sym.name for sym in resolved.expr.free_symbols}
+        if format == "latex" and any(n not in names for n in coordinates):
+            # `x1` cannot be one symbol in LaTeX: read it as the `x_1` the input writes, if that is the only one.
+            aliases, read_as = alias_in_latex(coordinates, names)
+            if aliases:
+                coordinates = [aliases.get(c, c) for c in coordinates]
+                _check_coordinates(coordinates)
+                notes.extend(read_as)
+                resolved = resolve_derivatives(parsed, coordinates, time, assumptions)
     except ParseError as exc:
         raise DerivationError(Status.PARSE_ERROR, str(exc), exc.diagnostic("lagrangian")) from exc
     except MinervaMathError as exc:

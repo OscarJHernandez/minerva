@@ -899,6 +899,7 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 
 - Explicit metrics only, in at most 4 coordinates, with real coordinates. No abstract manifolds, charts or atlases, tetrads, spin connections or differential forms; the connection is always Levi-Civita.
 - Unspecified functions are real functions of the coordinates; an undeclared f(r) is refused instead of being read as f times r.
+- With format auto, a metric whose entries are not all one syntax is read entry by entry only when every entry is read by exactly one parser or identically by both; an entry the two parsers read differently (r0^2 is 0 in LaTeX) makes the whole metric one syntax again, and its errors stand.
 - The signature is reported only when the declared assumptions decide the sign of each entry of a diagonal metric. Where a determinant or denominator vanishes is reported as a restriction on the coordinates, not as a statement about curvature singularities; root, logarithm and branch domains are not analysed.
 - Numerical agreement is evidence, not proof. A symbolic proof (a zero test that succeeded) is shown separately and is not attempted for very large expressions.
 - Geodesic equations are symbolic; they are not integrated numerically.
@@ -943,6 +944,29 @@ Give the coordinates and a metric once and ask for the inverse metric, the Chris
 - Assumes: M: positive.
 - Assumes: r: positive.
 - 2 of 2 requested quantities computed and numerically verified.
+
+#### A metric whose entries are written in two syntaxes, read entry by entry
+
+- **Coordinates:** `t, r, theta, phi` (LaTeX)
+- **Metric row 1:** `-(1-2M/r),  0,  0,  0` (LaTeX)
+- **Metric row 2:** `0,  (1-2M/r)^{-1},  0,  0` (LaTeX)
+- **Metric row 3:** `0,  0,  r^2,  0` (LaTeX)
+- **Metric row 4:** `0,  0,  0,  r^2*sin(theta)^2` (LaTeX)
+- **Status:** `ok`
+- **Christoffel symbols:** $\Gamma^{t}{}_{t r} = \frac{M}{r \left(- 2 M + r\right)}$
+- **Christoffel symbols:** $\Gamma^{r}{}_{t t} = \frac{M \left(- 2 M + r\right)}{r^{3}}$
+- **Christoffel symbols:** $\Gamma^{r}{}_{r r} = - \frac{M}{r \left(- 2 M + r\right)}$
+- **Christoffel symbols:** $\Gamma^{r}{}_{\theta \theta} = 2 M - r$
+- **Christoffel symbols:** $\Gamma^{r}{}_{\phi \phi} = \left(2 M - r\right) \sin^{2}{\left(\theta \right)}$
+- **Christoffel symbols:** $\Gamma^{\theta}{}_{r \theta} = \frac{1}{r}$
+- **Christoffel symbols:** $\Gamma^{\theta}{}_{\phi \phi} = - \sin{\left(\theta \right)} \cos{\left(\theta \right)}$
+- **Christoffel symbols:** $\Gamma^{\phi}{}_{r \phi} = \frac{1}{r}$
+- **Christoffel symbols:** $\Gamma^{\phi}{}_{\theta \phi} = \cot{\left(\theta \right)}$
+- **Check:** christoffel: 2 independent numeric checks passed; symbolic proof proved
+- Signature not determined: The sign of g_(t,t) is not decided by the declared assumptions, so the signature is not determined (it may change across regions).
+- Valid only where $- 2 M + r \neq 0$, $\sin{\left(\theta \right)} \neq 0$, $r \neq 0$ (the coordinates break down there; this is not a statement about curvature singularities).
+- Assumes: coordinates are real: t, r, theta, phi.
+- 1 of 1 requested quantities computed and numerically verified.
 
 #### Geodesic equations of the plane in polar coordinates
 

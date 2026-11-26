@@ -152,27 +152,30 @@ def test_the_corrected_text_metric_is_computed() -> None:
 # --- declared coordinates: suggest the name the Lagrangian uses ----------------------------------------------
 
 
+# In LaTeX a declared `x1` or `\\theta_1` is now read as the `x_1` / `theta_1` the input writes
+# (`test_mixed_syntax_acceptance.py`); in text syntax `x1` and `x_1` are two names, so it is still refused.
 @pytest.mark.parametrize(
-    ("declared", "lagrangian", "suggestions"),
+    ("declared", "lagrangian", "fmt", "suggestions"),
     [
         (
             ["x1", "y1"],
-            r"\frac12 m (\dot{x}_1^2 + \dot{y}_1^2) - k x_1^2 - k y_1^2",
+            "1/2*m*(x_1_dot^2 + y_1_dot^2) - k*x_1^2 - k*y_1^2",
+            "text",
             ["x_1", "y_1"],
         ),
-        ([r"\theta_1"], r"\frac12 m \dot{\theta}_1^2 - k \theta_1^2", ["theta_1"]),
-        (["theta1"], r"\frac12 m \dot{\theta}_1^2 - k \theta_1^2", ["theta_1"]),
-        (["q"], r"\frac12 m v^2 - k x^2", ["q_dot"]),
+        (["theta1"], "1/2*m*theta_1_dot^2 - k*theta_1^2", "text", ["theta_1"]),
+        (["q"], r"\frac12 m v^2 - k x^2", "latex", ["q_dot"]),
+        (["x", "m1"], r"\frac12 m_1 \dot{x}^2 - k x^2", "latex", ["m_1"]),
     ],
 )
 def test_a_misspelt_coordinate_is_refused_with_the_name_read(
-    declared: list[str], lagrangian: str, suggestions: list[str]
+    declared: list[str], lagrangian: str, fmt: str, suggestions: list[str]
 ) -> None:
     with pytest.raises(DerivationError) as info:
-        derive(lagrangian, declared, "t", {}, Limits())
+        derive(lagrangian, declared, "t", {}, Limits(), fmt)  # type: ignore[arg-type]
     diagnostic = info.value.diagnostic
     assert diagnostic is not None and diagnostic.code is InputCode.DECLARED_NAME_ABSENT
-    assert diagnostic.symbols == declared
+    assert diagnostic.symbols == [n for n in declared if n not in ("x",)]
     assert diagnostic.suggestions == suggestions
 
 

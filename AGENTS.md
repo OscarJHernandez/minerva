@@ -139,7 +139,10 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `functions.<tool>`, case/space) and every other name stays `unknown_tool` (never redirect). The LaTeX parser refuses
   plain-text syntax (`theta_dot`, `sin(x)`, spelled Greek names) with the corrected form instead of reading it as a
   product of letters; `analyze_lagrangian`, `search_invariants` and `geometry` take `format` (`auto`/`latex`/`text`, choosing a
-  strict parser, never rewriting input; for `geometry` one syntax for the whole metric, decided over every entry). A new expression field states its syntax in its description (a test).
+  strict parser, never rewriting input; for `geometry`, `auto` is read by the engine: one syntax for the whole grid
+  when that reads every entry, otherwise each entry by the one parser that reads it, and only if no entry is read
+  by both to different expressions (`r0^2` is 0 in LaTeX: then nothing is split; `geometry/setup._split_syntax`;
+  the result's `cell_syntax` says which entry was text)). A new expression field states its syntax in its description (a test).
 - Evidence for the model's equations (`engine/claim_evidence.py`, `loop.claim_evidence`): a claim is linked to a verified
   tool equation only by (1) the same left side and an equivalent right side, (2) residuals proportional by a factor free
   of the system's coordinates/velocities/accelerations (zeros of the factor become conditions), (3) its own name for a
@@ -246,7 +249,8 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
 - Recovery (`agent/recovery.py`): a failure is classified (`FailureClass`) and the loop does the one deterministic thing
   first. A parse error that says the text is of the other syntax (`text_syntax_in_latex`, `unrecognized_derivative`,
   `latex_in_text`) in a tool with a `format` is run once with the other strict parser (trace `policy: format_switch`; the
-  formula tools take a hidden `format`, default latex). A call equivalent to one that already ran or failed (same tool,
+  formula tools take a hidden `format`, default latex; a grid tool such as `geometry` is re-run under `auto`, never
+  flipped wholesale). When the re-run fails too, the model is told what it said (`recovery.rerun_summary`). A call equivalent to one that already ran or failed (same tool,
   same arguments after repair and cleaning, defaults filled, `format: auto` resolved: `recovery.canonical_key`) is not run
   again (`policy: refused_equivalent`); a tool that fails `AgentLimits.max_failures_per_tool` (3) times in a row is not
   run again that turn (`policy: budget_exhausted`); a failure with a diagnostic code not seen before for that tool is
@@ -1255,7 +1259,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   geometry grid together), and text without `*` lists each juxtaposed product (`2M`, `m1 (`, `x y`) and each `[`
   used for grouping (`implicit_multiplication`); any other text syntax error is `syntax`. These are diagnostics
   only: text syntax never reads juxtaposition as a product. A declared coordinate the Lagrangian does not use is
-  `declared_name_absent` with the read name spelt alike as the suggestion (`x1` → `x_1`); it is not accepted.
+  `declared_name_absent` with the read name spelt alike as the suggestion (`x1` → `x_1`).
+- Declared coordinates of a Lagrangian (`lagrangian.derive`, so every mechanics tool) are cleaned of LaTeX spelling
+  (`\theta_{1}` is `theta_1`). In LaTeX only, a declared name without `_` that the input does not use (`x1`, which
+  LaTeX cannot read as one symbol) is read as the one symbol spelt alike whose velocity is also in the input
+  (`notation/names.alias_in_latex`), reported as a `declared_name` normalization; two candidates, a candidate
+  without a velocity (a mass `m_1` for `m1`), one already declared, or text syntax: refused as before.
 - In text syntax `E`, `I`, `pi`, `oo` are reserved constants: never use `E` as a variable name in
   handbook entries (use `En`, `Ef`, ...).
 

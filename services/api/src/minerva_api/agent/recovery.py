@@ -29,7 +29,7 @@ import json
 from enum import StrEnum
 from typing import Any
 
-from .mathinput import MATH_FIELDS, resolve_syntax
+from .mathinput import GRID_FIELDS, MATH_FIELDS, resolve_syntax
 from .tools import TOOLS, ToolOutput, _coerce_numbers
 
 # Reason codes (`minerva_engine.notation.models.InputCode`) that mean the input is understood but needs a
@@ -125,7 +125,8 @@ def canonical_key(name: str, arguments: dict[str, Any]) -> str:
             )
         except (ValueError, TypeError):
             shaped = arguments
-    if shaped.get("format") == "auto":
+    if shaped.get("format") == "auto" and not any(f in shaped for f in GRID_FIELDS):
+        # A grid under `auto` is read by the engine, entry by entry when it must: it is its own call.
         text = next((shaped[f] for f in MATH_FIELDS if isinstance(shaped.get(f), str)), "")
         shaped = {**shaped, "format": resolve_syntax(text, "auto")}
     return name + "\0" + json.dumps(shaped, sort_keys=True, default=str)
@@ -153,6 +154,11 @@ def rerun_arguments(
     if tool is None or switch is None or "format" not in tool.args_model.model_fields:
         return None
     current = arguments.get("format", tool.args_model.model_fields["format"].default)
+    if any(f in tool.args_model.model_fields for f in GRID_FIELDS):
+        # A grid (a metric, tensor components) is re-read under `auto`: the whole grid in the other syntax when
+        # that reads every entry, otherwise entry by entry where that is unambiguous. Never flipped wholesale,
+        # since one entry in each syntax (`2M` next to `sin(theta)`) fails either way.
+        return None if current == "auto" else ({**arguments, "format": "auto"}, "format_switch")
     if current == "auto":
         text = next((arguments[f] for f in MATH_FIELDS if isinstance(arguments.get(f), str)), "")
         current = resolve_syntax(text, "auto")
@@ -163,3 +169,12 @@ def rerun_arguments(
     ):
         return None  # a backslash is LaTeX: the text reader would refuse it too
     return {**arguments, "format": switch[1]}, "format_switch"
+
+
+def rerun_summary(syntax: str, retried: ToolOutput) -> str:
+    """One line for the model: what the corrective re-run in `syntax` reported (its diagnostic when it has one)."""
+    lines = retried.for_model.splitlines()
+    detail = next(
+        (line for line in lines if line.startswith("diagnostic:")), lines[0] if lines else ""
+    )
+    return f"re-read with format {syntax}, it failed too: {detail}"
