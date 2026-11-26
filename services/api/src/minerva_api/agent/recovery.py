@@ -29,7 +29,7 @@ import json
 from enum import StrEnum
 from typing import Any
 
-from .mathinput import GRID_FIELDS, MATH_FIELDS, resolve_syntax
+from .mathinput import GRID_FIELDS, MATH_FIELDS, input_record, resolve_syntax
 from .tools import TOOLS, ToolOutput, _coerce_numbers
 
 # Reason codes (`minerva_engine.notation.models.InputCode`) that mean the input is understood but needs a
@@ -178,3 +178,17 @@ def rerun_summary(syntax: str, retried: ToolOutput) -> str:
         (line for line in lines if line.startswith("diagnostic:")), lines[0] if lines else ""
     )
     return f"re-read with format {syntax}, it failed too: {detail}"
+
+
+def failure_signature(output: ToolOutput) -> tuple[str, tuple[str, ...]] | None:
+    """What a failure was about, for the failure budget: its diagnostic code and symbols, or None.
+
+    Only a recoverable diagnostic has a signature: it names what to change, so a failure with a signature not seen
+    before in the turn is the model correcting its input (`sin(` fixed, now `theta`), not a stuck loop. A failure
+    without one (an uncoded error, a timeout, invalid arguments) has none and always counts. The symbols are the
+    user's names: kept in memory for the turn, never logged.
+    """
+    _, diagnostic = input_record(output.card.data)
+    if diagnostic is None or not diagnostic.recoverable:
+        return None
+    return diagnostic.code.value, tuple(diagnostic.symbols)

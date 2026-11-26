@@ -1,5 +1,5 @@
 {
-  "applied": 994,
+  "applied": 1016,
   "by_operator": {
     "derivative:joined": {
       "diagnosed": 0,
@@ -40,21 +40,21 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 21,
+      "same_after_cleaning": 23,
       "untyped_failure": 0
     },
     "shape:formula_alias": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 106,
+      "same_after_cleaning": 108,
       "untyped_failure": 0
     },
     "shape:json_as_string": {
       "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 91,
+      "same_after_cleaning": 95,
       "untyped_failure": 0
     },
     "shape:kind_wrapped": {
@@ -68,7 +68,7 @@
       "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 37,
+      "same_after_cleaning": 39,
       "untyped_failure": 0
     },
     "shape:number_as_string": {
@@ -89,42 +89,42 @@
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 143,
+      "same_after_cleaning": 145,
       "untyped_failure": 0
     },
     "transport:dollar_wrapper": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 143,
+      "same_after_cleaning": 145,
       "untyped_failure": 0
     },
     "transport:doubled_backslash": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 102,
+      "same_after_cleaning": 104,
       "untyped_failure": 0
     },
     "transport:markdown_escape": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 87,
+      "same_after_cleaning": 89,
       "untyped_failure": 0
     },
     "transport:trailing_period": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 115,
+      "same_after_cleaning": 117,
       "untyped_failure": 0
     },
     "transport:unicode_look_alikes": {
       "diagnosed": 0,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 110,
+      "same_after_cleaning": 112,
       "untyped_failure": 0
     }
   },
@@ -133,7 +133,7 @@
       "diagnosed": 2,
       "different_verified_result": 0,
       "same": 4,
-      "same_after_cleaning": 64,
+      "same_after_cleaning": 84,
       "untyped_failure": 0
     },
     "approximation": {
@@ -224,7 +224,7 @@
       "diagnosed": 1,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 3,
+      "same_after_cleaning": 5,
       "untyped_failure": 0
     },
     "integrate": {
@@ -372,34 +372,34 @@
   "format": 1,
   "mode": "pr",
   "not_applicable": {
-    "derivative:joined": 162,
-    "derivative:latex_letter_run": 156,
-    "derivative:leibniz": 162,
-    "derivative:spaced": 162,
-    "derivative:upper": 162,
-    "shape:assignment_prefix": 147,
-    "shape:formula_alias": 62,
+    "derivative:joined": 166,
+    "derivative:latex_letter_run": 159,
+    "derivative:leibniz": 166,
+    "derivative:spaced": 166,
+    "derivative:upper": 166,
+    "shape:assignment_prefix": 149,
+    "shape:formula_alias": 64,
     "shape:json_as_string": 67,
-    "shape:kind_wrapped": 159,
+    "shape:kind_wrapped": 163,
     "shape:list_as_string": 125,
-    "shape:number_as_string": 158,
-    "syntax:braced_exponent": 162,
-    "transport:code_fence": 25,
-    "transport:dollar_wrapper": 25,
-    "transport:doubled_backslash": 66,
-    "transport:markdown_escape": 81,
-    "transport:trailing_period": 53,
-    "transport:unicode_look_alikes": 58
+    "shape:number_as_string": 162,
+    "syntax:braced_exponent": 166,
+    "transport:code_fence": 27,
+    "transport:dollar_wrapper": 27,
+    "transport:doubled_backslash": 68,
+    "transport:markdown_escape": 83,
+    "transport:trailing_period": 55,
+    "transport:unicode_look_alikes": 60
   },
-  "recovered_without_a_model_call": 981,
-  "recovery_rate": 0.9869,
-  "references": 168,
+  "recovered_without_a_model_call": 1003,
+  "recovery_rate": 0.9872,
+  "references": 172,
   "tools_covered": 36,
   "totals": {
     "diagnosed": 13,
     "different_verified_result": 0,
     "same": 17,
-    "same_after_cleaning": 964,
+    "same_after_cleaning": 986,
     "untyped_failure": 0
   }
 }

@@ -253,8 +253,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   flipped wholesale). When the re-run fails too, the model is told what it said (`recovery.rerun_summary`). A call equivalent to one that already ran or failed (same tool,
   same arguments after repair and cleaning, defaults filled, `format: auto` resolved: `recovery.canonical_key`) is not run
   again (`policy: refused_equivalent`); a tool that fails `AgentLimits.max_failures_per_tool` (3) times in a row is not
-  run again that turn (`policy: budget_exhausted`); a failure with a diagnostic code not seen before for that tool is
-  progress. Unsupported mathematics is an answer, never retried with equivalent input. Nothing here touches verification:
+  run again that turn (`policy: budget_exhausted`), where a failure with a recoverable diagnostic whose (code, symbols)
+  was not reported before in the turn (`recovery.failure_signature`: `sin(` fixed, now `theta`) is progress and does
+  not count; the same signature again does, so a model cycling through the same mistakes still runs out, and the
+  turn's call, step and time limits bound everything else. A new code or signature is also progress for the
+  unproductive-call stop. Unsupported mathematics is an answer, never retried with equivalent input. Nothing here touches verification:
   a re-run goes through the same checks, and a candidate that was not verified stays withheld.
 - Corruption test (`agent/evaluation/corruption.py`, `scripts/eval_corruptions.py`, `make eval-corruptions`, report
   `docs/benchmarks/corruption.md`): every known model mistake (the inverses of the cleaning rules, shape errors, velocity

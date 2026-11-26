@@ -959,6 +959,94 @@ SEQ_SCRIPTS: dict[str, dict[str, Any]] = {
     },
 }
 EXTRA_SCRIPTS.update(SEQ_SCRIPTS)
+
+# The two chats of 2026-11-26. Ideal: each turn reads the input as the model really wrote it (mixed syntax, `x1`) in
+# one call. Adversarial: a turn that never gets a readable input, and a reply that states what no tool gave.
+CHAT_METRIC = {
+    "coordinates": ["t", "r", "theta", "phi"],
+    "metric": [
+        ["-(1-2M/r)", "0", "0", "0"],
+        ["0", "(1-2M/r)^{-1}", "0", "0"],
+        ["0", "0", "r^2", "0"],
+        ["0", "0", "0", "r^2*sin(theta)^2"],
+    ],
+}
+BROKEN_METRIC = {**CHAT_METRIC, "metric": [row[:] for row in CHAT_METRIC["metric"]]}
+BROKEN_METRIC["metric"][2][2] = "\\frac{r^2}{"
+TRIANGLE_CALL = {
+    "coordinates": ["x1", "y1", "x2", "y2", "x3", "y3"],
+    "format": "latex",
+    "lagrangian": (
+        r"\frac{1}{2} m_1 (\dot{x}_1^2 + \dot{y}_1^2) + \frac{1}{2} m_2 (\dot{x}_2^2 + \dot{y}_2^2) + "
+        r"\frac{1}{2} m_3 (\dot{x}_3^2 + \dot{y}_3^2) - \frac{k}{2} \left[ "
+        r"\left(\sqrt{(x_2-x_1)^2 + (y_2-y_1)^2} - a\right)^2 + \left(\sqrt{(x_3-x_2)^2 + (y_3-y_2)^2} - a\right)^2 "
+        r"+ \left(\sqrt{(x_1-x_3)^2 + (y_1-y_3)^2} - a\right)^2 \right]"
+    ),
+    "time": "t",
+}
+RING_CALL = {
+    "coordinates": ["theta1", "theta2", "theta3"],
+    "format": "latex",
+    "lagrangian": (
+        r"\frac{1}{2} R^2 (m_1 \dot{\theta}_1^2 + m_2 \dot{\theta}_2^2 + m_3 \dot{\theta}_3^2) - \frac{k}{2} "
+        r"\left[ \left(2R\sin\frac{\theta_2-\theta_1}{2} - a\right)^2 + "
+        r"\left(2R\sin\frac{\theta_3-\theta_2}{2} - a\right)^2 + "
+        r"\left(2R\sin\frac{\theta_1-\theta_3}{2} - a\right)^2 \right]"
+    ),
+    "time": "t",
+}
+
+
+def black_hole_turns(christoffel: list[Any] | None = None) -> list[Any]:
+    return [
+        say(
+            "The Schwarzschild metric is $$ ds^2 = -(1-2M/r)dt^2 + (1-2M/r)^{-1}dr^2 + r^2 d\\Omega^2 $$"
+        ),
+        *(christoffel or [call("geometry", {**CHAT_METRIC, "quantities": ["christoffel"]})]),
+        say("The card lists the nonzero Christoffel symbols, each checked numerically."),
+        call("geometry", {**CHAT_METRIC, "quantities": ["geodesics"]}),
+        say("The card gives the four geodesic equations, one per coordinate."),
+    ]
+
+
+def springs_turns(last: list[Any] | None = None) -> list[Any]:
+    return [
+        call("analyze_lagrangian", TRIANGLE_CALL),
+        say("The card gives the Lagrangian as read and its six checked equations of motion."),
+        say(
+            "On a circle of radius R each particle has one angle; the springs pull along the chords."
+        ),
+        *(
+            last
+            or [
+                call("analyze_lagrangian", RING_CALL),
+                say("The card gives the three equations of motion, each confirmed numerically."),
+            ]
+        ),
+    ]
+
+
+CHAT_SCRIPTS: dict[str, dict[str, Any]] = {
+    "black-hole-metric-chat-2026-11-26": {
+        "ideal": black_hole_turns(),
+        "adversarial": {
+            # the turn never reaches a readable metric (broken LaTeX is refused, never guessed) and moves on
+            FailureClass.PARSING: black_hole_turns(
+                [call("geometry", {**BROKEN_METRIC, "quantities": ["christoffel"]})]
+            ),
+        },
+    },
+    "three-particles-on-springs-chat-2026-11-26": {
+        "ideal": springs_turns(),
+        "adversarial": {
+            # no tool for the equations of motion: the model writes them itself
+            FailureClass.TOOL_SELECTION: springs_turns(
+                [say("The equations of motion are $m_i R^2 \\ddot{\\theta}_i = F_i$.")]
+            ),
+        },
+    },
+}
+EXTRA_SCRIPTS.update(CHAT_SCRIPTS)
 SCRIPTS.update(EXTRA_SCRIPTS)
 
 IDEAL = [(case_id, s["ideal"]) for case_id, s in SCRIPTS.items()]

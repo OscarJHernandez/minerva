@@ -288,3 +288,15 @@ def test_a_wrapper_that_is_not_exactly_one_known_tag_is_left_alone() -> None:
     ):
         fixed, notes = repair_arguments(StatMechArgs, {"system": system})
         assert fixed["system"] == system and not notes, system
+
+
+def test_a_list_encoded_twice_is_read_once_and_still_validated() -> None:
+    # `coordinates` as `"[\"t\", \"r\", \"\theta\"]"`: the quotes escaped one time too many.
+    model = TOOLS["geometry"].args_model
+    twice = '[\\"t\\", \\"r\\", \\"\\theta\\"]'
+    out, notes = repair_arguments(model, {"coordinates": twice})
+    assert out["coordinates"] == ["t", "r", "\\theta"]
+    assert notes and notes[0].target == "list"
+    # not JSON even then: left as it was, for the schema to refuse
+    out, notes = repair_arguments(model, {"coordinates": '[\\"t\\", \\"r'})
+    assert out["coordinates"] == '[\\"t\\", \\"r' and notes == ()

@@ -38,6 +38,17 @@ _GEOMETRIES: dict[str, dict[str, Any]] = {
         ],
         "assumptions": {"M": ["positive"], "r": ["positive"]},
     },
+    # The metric of the chat of 2026-11-26, entries in two syntaxes: read entry by entry under `format: auto`.
+    "mixed": {
+        "coordinates": ["t", "r", "theta", "phi"],
+        "metric": [
+            ["-(1-2M/r)", "0", "0", "0"],
+            ["0", "(1-2M/r)^{-1}", "0", "0"],
+            ["0", "0", "r^2", "0"],
+            ["0", "0", "0", "r^2*sin(theta)^2"],
+        ],
+        "assumptions": {"M": ["positive"], "r": ["positive"]},
+    },
 }
 _GEOMETRY_WORDS = (
     ("christoffel", "christoffel"),
