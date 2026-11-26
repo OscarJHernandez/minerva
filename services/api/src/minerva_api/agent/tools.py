@@ -2678,6 +2678,10 @@ def run_lagrangian(args: AnalyzeLagrangianArgs, ctx: ToolContext) -> ToolOutput:
         else:
             quoted.append((c.expression_latex, NOT_VERIFIED))
     lines.extend(f"tested, not found: {t}" for t in report.tested)
+    lines.extend(
+        f"NOT searched (time limit; say it was not checked, never that there is none): {t}"
+        for t in report.not_searched
+    )
     lines.extend(f"note: {n}" for n in report.notes)
     if report.restrictions_latex:
         lines.append(

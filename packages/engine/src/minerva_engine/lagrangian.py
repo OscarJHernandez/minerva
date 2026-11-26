@@ -25,6 +25,7 @@ from typing import Literal
 import sympy as sp
 from pydantic import BaseModel, Field
 
+from .clock import TimeUp, stop_at
 from .errors import MinervaMathError, ParseError
 from .latexparse import parse_latex
 from .latexprint import to_latex
@@ -45,7 +46,7 @@ from .notation.names import near_misses
 from .notation.time_symbol import time_clash, time_clash_message
 from .restrictions import determinant_conditions
 from .textparse import parse_text
-from .verify import euler_lagrange_check, numeric_check
+from .verify import clearly_nonzero, euler_lagrange_check, numeric_check
 
 MAX_COORDINATES = 8
 
@@ -81,6 +82,8 @@ class LagrangianReport(InputAware):
     accelerations: list[NamedExpression] = Field(default_factory=list)
     conserved: list[ConservedQuantity] = Field(default_factory=list)
     tested: list[str] = Field(default_factory=list)
+    # Candidate constants of motion the time budget did not reach: neither found nor ruled out.
+    not_searched: list[str] = Field(default_factory=list)
     features: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
     # Where the solution is not defined: the mass matrix is divided by in solving for the accelerations,
@@ -353,6 +356,14 @@ class ConservedSearch:
     items: list[tuple[ConservedQuantity, sp.Expr]] = field(default_factory=list)
     tested: list[str] = field(default_factory=list)
     features: list[str] = field(default_factory=list)
+    # Candidates the time budget did not reach: nothing is said about them, either way.
+    not_searched: list[str] = field(default_factory=list)
+
+
+# The share of the sandbox time limit an analysis may use before it stops searching for constants of motion
+# and returns what it has (the equations of motion are already checked by then). The rest of the limit covers
+# starting the sandbox child and the stage in flight when the budget runs out.
+CONSERVED_SEARCH_SHARE = 0.6
 
 
 def verify_zero_derivative(derivative: sp.Expr, digits: int = 30) -> tuple[bool, Verification]:
@@ -384,91 +395,139 @@ def verify_constant(
     return verify_zero_derivative(d.total_derivative(quantity).subs(d.solution), digits=digits)
 
 
-def find_conserved(d: Derivation) -> ConservedSearch:
-    """Cyclic coordinates, energy and rotations, each verified on the equations of motion."""
+def find_conserved(d: Derivation, deadline: float | None = None) -> ConservedSearch:
+    """Cyclic coordinates, energy and rotations, each verified on the equations of motion.
+
+    With a `deadline` (a `time.monotonic()` value) each candidate runs under `clock.stop_at`: one that the
+    deadline interrupts, and every later one, is listed in `not_searched` and nothing is concluded about it.
+    A candidate is ruled out by a numerical screen (`clearly_nonzero`) before its symbolic test when the
+    quantity that must vanish is clearly nonzero at a sampled point; a candidate that survives the screen is
+    tested exactly as before, so the screen can only save time, never add a constant.
+    """
     L, q, qd, p, n, show = d.lagrangian, d.q, d.qd, d.momenta, d.n, d.show
     coordinates = d.coordinates
     out = ConservedSearch()
+
+    def vanishes(expr: sp.Expr) -> bool:
+        return not clearly_nonzero(expr) and sp.simplify(expr) == 0
 
     def verify_conserved(quantity: sp.Expr) -> tuple[bool, Verification | None]:
         return verify_constant(d, quantity)
 
     # 1. Cyclic coordinates.
+    cyclic_reached = n
     for i in range(n):
-        if sp.simplify(sp.diff(L, q[i])) == 0:
-            ok, ver = verify_conserved(p[i])
-            out.items.append(
-                (
-                    ConservedQuantity(
-                        name=f"Momentum conjugate to {coordinates[i]}",
-                        kind="cyclic",
-                        expression_latex=f"p_{{{to_latex(q[i])}}} = {show(p[i])}",
-                        reason=f"{coordinates[i]} is cyclic: L does not depend on it, so dp/dt = dL/dq = 0",
-                        verified=ok,
-                        verification=ver,
-                    ),
-                    p[i],
-                )
+        try:
+            with stop_at(deadline):
+                if not vanishes(sp.diff(L, q[i])):
+                    continue
+                ok, ver = verify_conserved(p[i])
+        except TimeUp:
+            cyclic_reached = i
+            out.not_searched.append(
+                "cyclic coordinates: " + ", ".join(coordinates[k] for k in range(i, n))
             )
-            out.features.append("lagrangian:cyclic")
-    if "lagrangian:cyclic" not in out.features:
-        out.tested.append("cyclic coordinates: none (every coordinate appears in L)")
-
-    # 2. Energy.
-    if not d.time_dependent:
-        energy = sp.expand(sum(qd[i] * p[i] for i in range(n)) - L)
-        ok, ver = verify_conserved(energy)
+            break
         out.items.append(
             (
                 ConservedQuantity(
-                    name="Energy function",
-                    kind="energy",
-                    expression_latex=f"h = {show(energy)}",
-                    reason="L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved",
+                    name=f"Momentum conjugate to {coordinates[i]}",
+                    kind="cyclic",
+                    expression_latex=f"p_{{{to_latex(q[i])}}} = {show(p[i])}",
+                    reason=f"{coordinates[i]} is cyclic: L does not depend on it, so dp/dt = dL/dq = 0",
                     verified=ok,
                     verification=ver,
                 ),
-                energy,
+                p[i],
             )
         )
+        out.features.append("lagrangian:cyclic")
+    if "lagrangian:cyclic" not in out.features:
+        if cyclic_reached == n:
+            out.tested.append("cyclic coordinates: none (every coordinate appears in L)")
+        elif cyclic_reached:
+            out.tested.append(
+                "cyclic coordinates: none among "
+                + ", ".join(coordinates[k] for k in range(cyclic_reached))
+            )
+
+    # 2. Energy.
+    if not d.time_dependent:
+        try:
+            with stop_at(deadline):
+                energy = sp.expand(sum(qd[i] * p[i] for i in range(n)) - L)
+                ok, ver = verify_conserved(energy)
+        except TimeUp:
+            out.not_searched.append("energy function")
+        else:
+            out.items.append(
+                (
+                    ConservedQuantity(
+                        name="Energy function",
+                        kind="energy",
+                        expression_latex=f"h = {show(energy)}",
+                        reason="L has no explicit time dependence, so h = sum(qdot dL/dqdot) - L is conserved",
+                        verified=ok,
+                        verification=ver,
+                    ),
+                    energy,
+                )
+            )
     else:
         out.tested.append("energy function: not conserved (L depends explicitly on time)")
 
     # 3. Rotations of coordinate pairs.
     found_rotation = False
-    for i, j in itertools.combinations(range(n), 2):
+    pairs = list(itertools.combinations(range(n), 2))
+    reached = len(pairs)
+    for index, (i, j) in enumerate(pairs):
         xi = [sp.Integer(0)] * n
         xi[i], xi[j] = -q[j], q[i]
-        delta = sum(
-            sp.diff(L, q[k]) * xi[k]
-            + sp.diff(L, qd[k]) * sum(sp.diff(xi[k], q[m]) * qd[m] for m in range(n))
-            for k in (i, j)
-        )
-        if sp.simplify(delta) == 0:
-            charge = sp.simplify(p[i] * xi[i] + p[j] * xi[j])
-            ok, ver = verify_conserved(charge)
-            out.items.append(
-                (
-                    ConservedQuantity(
-                        name=f"Rotation symmetry in the ({coordinates[i]}, {coordinates[j]}) plane",
-                        kind="rotation",
-                        expression_latex=f"Q = {show(charge)}",
-                        reason=(
-                            f"L is unchanged by rotating ({coordinates[i]}, {coordinates[j]}) as Cartesian "
-                            "coordinates, so by Noether's theorem Q = Σ p ξ is conserved"
-                        ),
-                        verified=ok,
-                        verification=ver,
-                    ),
-                    charge,
+        try:
+            with stop_at(deadline):
+                delta = sum(
+                    sp.diff(L, q[k]) * xi[k]
+                    + sp.diff(L, qd[k]) * sum(sp.diff(xi[k], q[m]) * qd[m] for m in range(n))
+                    for k in (i, j)
                 )
+                if not vanishes(delta):
+                    continue
+                charge = sp.simplify(p[i] * xi[i] + p[j] * xi[j])
+                ok, ver = verify_conserved(charge)
+        except TimeUp:
+            reached = index
+            out.not_searched.append(
+                "rotations of the pairs "
+                + ", ".join(f"({coordinates[a]}, {coordinates[b]})" for a, b in pairs[index:])
             )
-            found_rotation = True
+            break
+        out.items.append(
+            (
+                ConservedQuantity(
+                    name=f"Rotation symmetry in the ({coordinates[i]}, {coordinates[j]}) plane",
+                    kind="rotation",
+                    expression_latex=f"Q = {show(charge)}",
+                    reason=(
+                        f"L is unchanged by rotating ({coordinates[i]}, {coordinates[j]}) as Cartesian "
+                        "coordinates, so by Noether's theorem Q = Σ p ξ is conserved"
+                    ),
+                    verified=ok,
+                    verification=ver,
+                ),
+                charge,
+            )
+        )
+        found_rotation = True
     if found_rotation:
         out.features.append("lagrangian:rotation")
-    if n > 1 and not found_rotation:
+    if n > 1 and not found_rotation and reached == len(pairs):
         out.tested.append(
             "rotations of each pair of coordinates (as Cartesian): none leaves L unchanged"
+        )
+    elif n > 1 and not found_rotation and reached:
+        out.tested.append(
+            f"rotations of the first {reached} pair(s) of coordinates (as Cartesian): none leaves L "
+            "unchanged"
         )
     return out
 
@@ -481,6 +540,7 @@ def analyze_lagrangian(
     limits: Limits,
     format: Literal["latex", "text"] = "latex",
 ) -> LagrangianReport:
+    deadline = time_module.monotonic() + CONSERVED_SEARCH_SHARE * limits.timeout_seconds
     try:
         d = derive(latex, coordinates, time, assumptions, limits, format)
     except DerivationError as exc:
@@ -549,12 +609,13 @@ def analyze_lagrangian(
         )
 
     started = time_module.perf_counter()
-    search = find_conserved(d)
+    search = find_conserved(d, deadline)
     d.stages["conserved"] = round((time_module.perf_counter() - started) * 1000)
     report.stages = dict(d.stages)
     report.conserved = [item for item, _ in search.items]
     report.tested += search.tested
     report.features += search.features
+    report.not_searched = list(search.not_searched)
     if not report.conserved:
         report.features.append("lagrangian:no-symmetry-found")
     report.notes.append(
@@ -572,5 +633,11 @@ def analyze_lagrangian(
         f"{'' if len(report.conserved) - len(unverified) == 1 else 's'} of motion"
         + (f", {len(unverified)} not verified" if unverified else "")
         + "."
+        + (
+            " The time limit stopped the search for constants of motion; not searched, so nothing is "
+            "claimed about them: " + "; ".join(report.not_searched) + "."
+            if report.not_searched
+            else ""
+        )
     )
     return report

@@ -250,6 +250,8 @@ export interface LagrangianReport {
     } | null;
   }[];
   tested: string[];
+  /** Candidate constants the time limit did not reach (neither found nor ruled out). Absent in older cards. */
+  not_searched?: string[];
   features: string[];
   notes: string[];
   message: string;

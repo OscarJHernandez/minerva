@@ -129,6 +129,16 @@ export function LagrangianCard({
           ))}
         </ul>
       )}
+      {(report.not_searched?.length ?? 0) > 0 && (
+        <div className="mt-3 text-sm">
+          <p className="text-warn">Not searched (the time limit was reached first):</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-muted">
+            {report.not_searched?.map((t, i) => (
+              <li key={i}>{t}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {report.notes.map((n, i) => (
         <p key={i} className="mt-2 text-xs text-muted">
           {n}
