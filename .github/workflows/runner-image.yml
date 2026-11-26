@@ -1,0 +1,87 @@
+name: Runner image
+
+# Builds the CI runner image (deploy/docker/runner.Dockerfile): the stock runner with CPython 3.13 and the uv cache for
+# uv.lock baked in, so the self-hosted runner pods stop downloading every package over the cluster's shared uplink.
+# Pull requests only prove it builds (the Dockerfile ends with an offline `uv sync` smoke test). `main`, a manual run and
+# a monthly schedule (a newer runner release, and wheels for the current uv.lock) push it to GHCR; the run summary
+# prints the reference to pin in arc/values/minerva-runners.yaml of the homelab-kubernetes repository. Nothing pulls the
+# image automatically and ci.yml does not depend on it.
+on:
+  pull_request:
+    paths:
+      - deploy/docker/runner.Dockerfile
+      - uv.lock
+      - scripts/build-image.sh
+      - .github/workflows/runner-image.yml
+  push:
+    branches: [main]
+    paths:
+      - deploy/docker/runner.Dockerfile
+      - uv.lock
+      - scripts/build-image.sh
+      - .github/workflows/runner-image.yml
+  workflow_dispatch:
+  schedule:
+    - cron: "23 4 2 * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runner-image-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build the runner image
+    # Trusted code only: it needs the BuildKit sidecar of the self-hosted runner, so a fork pull request never runs it.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: minerva-runners
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write # push ghcr.io/oscarjhernandez/minerva-runner (only from main)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Resolve the runner release and the tag
+        id: v
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          runner=$(curl -fsSL -H "Authorization: Bearer ${GH_TOKEN}" https://api.github.com/repos/actions/runner/releases/latest \
+            | sed -n 's/^ *"tag_name": *"v\([0-9][0-9.]*\)".*/\1/p' | head -n 1)
+          [ -n "${runner}" ] || { echo "::error::could not resolve the latest actions/runner release"; exit 1; }
+          lock=$(sha256sum uv.lock | cut -c1-12)
+          {
+            echo "runner=${runner}"
+            echo "tag=lock-${lock}-$(date -u +%Y%m%d)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Build (and push outside pull requests)
+        env:
+          EVENT: ${{ github.event_name }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DIGEST_FILE: ${{ runner.temp }}/digest.txt
+          RUNNER_VERSION: ${{ steps.v.outputs.runner }}
+          TAG: ${{ steps.v.outputs.tag }}
+        run: |
+          set -euo pipefail
+          repo=ghcr.io/oscarjhernandez/minerva-runner
+          if [ "${EVENT}" != pull_request ] && [ "${GITHUB_REF}" = refs/heads/main ]; then
+            bash scripts/build-image.sh deploy/docker/runner.Dockerfile "${repo}:${TAG}" push --build-arg "RUNNER_VERSION=${RUNNER_VERSION}"
+            digest=$(cat "${DIGEST_FILE}")
+            {
+              echo "### Runner image published"
+              echo "- Tag \`${TAG}\`, digest \`${digest}\`, runner ${RUNNER_VERSION}"
+              echo ""
+              echo "Pin it in \`arc/values/minerva-runners.yaml\` of homelab-kubernetes (then the Helm upgrade, by hand):"
+              echo ""
+              echo "    image: ${repo}:${TAG}@${digest}"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            bash scripts/build-image.sh deploy/docker/runner.Dockerfile "${repo}:build-${GITHUB_SHA}" no-push --build-arg "RUNNER_VERSION=${RUNNER_VERSION}"
+            echo "Built without pushing (only main pushes the image)." >> "$GITHUB_STEP_SUMMARY"
+          fi
