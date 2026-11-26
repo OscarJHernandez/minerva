@@ -28,6 +28,12 @@ Mitigations to apply before going public:
   credentials, a restricted network policy and no mounted host paths.
 - Alternative: run fork pull requests on GitHub-hosted runners only and keep self-hosted runners for `main`.
 - Workflows grant `contents: read` by default and nothing else unless a job needs it.
+- The runner pods use a public image, `ghcr.io/oscarjhernandez/minerva-runner` (`deploy/docker/runner.Dockerfile`,
+  `.github/workflows/runner-image.yml`): the stock runner plus CPython 3.13 and the uv cache for `uv.lock`, so jobs stop
+  downloading every package over the cluster's shared uplink. It is pushed only from `main` (a pull request only builds
+  it, a fork pull request never), holds only open-source packages, and is pinned by digest in the cluster's values file.
+  A job writes only to its own throwaway pod, so a branch cannot change what `main` and Deploy install. The GitHub
+  Actions cache was measured and rejected for this (pull request #219): it comes over the same link.
 
 ## Secret handling
 
