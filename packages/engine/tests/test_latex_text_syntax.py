@@ -8,6 +8,7 @@ import pytest
 import sympy as sp
 from minerva_engine.errors import ParseError
 from minerva_engine.latexparse import parse_latex
+from minerva_engine.latexprint import to_latex
 from minerva_engine.textparse import parse_text
 
 
@@ -106,3 +107,41 @@ def test_the_rule_never_touches_a_text_without_a_braced_exponent() -> None:
     text, notes = read_braced_exponents("(1-2*M/r)^{-1}")
     assert text == "(1-2*M/r)^(-1)" and len(notes) == 1
     assert notes[0].kind.value == "transport"
+
+
+# -- velocities print with the dot they were written with (debug report: a unit card showed theta_{dot}) ----
+
+
+@pytest.mark.parametrize(
+    ("name", "printed"),
+    [
+        ("r_dot", r"\dot{r}"),
+        ("theta_dot", r"\dot{\theta}"),
+        ("x_ddot", r"\ddot{x}"),  # SymPy's default printed x_{\dot{d}}
+        ("theta_1_dot", r"\dot{\theta}_{1}"),
+        ("q_12_dot", r"\dot{q}_{12}"),
+        ("x_alpha_dot", r"\dot{x}_{\alpha}"),
+        ("Phi_dot", r"\dot{\Phi}"),
+    ],
+)
+def test_a_velocity_prints_with_its_dot_and_reads_back(name: str, printed: str) -> None:
+    symbol = sp.Symbol(name)
+    assert to_latex(symbol) == printed
+    assert parse_latex(printed) == symbol
+
+
+def test_the_written_velocities_survive_a_round_trip_in_an_expression() -> None:
+    expr = parse_latex(r"m r^2 \dot{r} \dot{\theta} - \ddot{x}_{1}")
+    text = to_latex(expr)
+    assert "dot}" not in text and r"\dot{\theta}" in text and r"\ddot{x}_{1}" in text
+    assert parse_latex(text) == expr
+
+
+@pytest.mark.parametrize("name", ["x_d", "dot", "x_dotty", "x_1"])
+def test_names_that_are_not_velocities_print_as_before(name: str) -> None:
+    assert r"\dot" not in to_latex(sp.Symbol(name))
+
+
+def test_a_caller_name_map_still_wins() -> None:
+    v = sp.Symbol("x_dot")
+    assert to_latex(v, symbol_names={v: "v"}) == "v"

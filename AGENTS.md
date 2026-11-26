@@ -1227,7 +1227,9 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   text syntax `gamma` stays the function (a bare `gamma` there is refused), so a result is re-read from LaTeX, not text.
   `e` and `i` are plain symbols; `\exponentialE` / `\imaginaryI` / `\pi` are
   constants; `\sin 2x` and `\sin^{-1}` are rejected as ambiguous.
-- LaTeX output has one printer, `minerva_engine.latexprint.to_latex` (never call `sp.latex` directly): constants
+- LaTeX output has one printer, `minerva_engine.latexprint.to_latex` (never call `sp.latex` directly): the symbols
+  `q_dot` / `q_ddot` (what the parser makes of `\dot{q}` / `\ddot{q}`) print as `\dot{q}` / `\ddot{q}`, so they read
+  back as the same symbol. Constants
   print as `\mathrm{e}` / `\mathrm{i}` (the parser reads them back as the constants), so a bare `e` or `i` in
   output is always a symbol. Handbook `statement_latex` follows the same convention (a test enforces it).
   `\exponentialE` / `\imaginaryI` are input aliases only; KaTeX gets display macros for them. LaTeX that

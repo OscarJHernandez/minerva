@@ -45,7 +45,7 @@ from .dimensions import (
     read_unit,
 )
 from .errors import MinervaMathError
-from .latexparse import parse_latex
+from .latexparse import _GREEK, _GREEK_NAME, parse_latex
 from .latexprint import to_latex
 from .models import SYMBOL_NAME_MAX, Limits, Status
 from .notation.models import InputAware, InputCode, InputDiagnostic
@@ -56,6 +56,77 @@ MAX_CANDIDATES = 32
 MAX_SUGGESTIONS = 6
 _NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
 _PLACEHOLDER = re.compile(r"Qq[a-z]{2}")
+
+# A quantity name written in LaTeX: a letter or Greek command, an optional subscript, optionally under one
+# \dot or \ddot with an optional subscript after it. Nothing else is read (no products, no \mathrm).
+_HEAD = r"(?:[A-Za-z]|\\[A-Za-z]+)"
+_SUB_PIECE = r"(?:[A-Za-z0-9]|\\[A-Za-z]+)"
+_SUB = rf"_(?:\{{(?:{_SUB_PIECE})+\}}|{_SUB_PIECE})"
+_PLAIN_LATEX = re.compile(rf"(?P<head>{_HEAD})(?P<sub>{_SUB})?")
+_DOTTED_LATEX = re.compile(
+    rf"\\(?P<kind>dot|ddot)\{{(?P<inner>{_HEAD}(?:{_SUB})?)\}}(?P<after>{_SUB})?"
+)
+
+
+def _greek(command: str) -> str | None:
+    return _GREEK_NAME.get(command, command) if command in _GREEK else None
+
+
+def _sub_text(sub: str) -> str | None:
+    """`_1`, `_{12}`, `_{\\alpha}` -> `1`, `12`, `alpha`, as the parser concatenates a subscript."""
+    body = sub[1:].removeprefix("{").removesuffix("}")
+    parts: list[str] = []
+    for piece in re.findall(r"\\[A-Za-z]+|[A-Za-z0-9]", body):
+        name = _greek(piece[1:]) if piece.startswith("\\") else piece
+        if name is None:
+            return None
+        parts.append(name)
+    return "".join(parts)
+
+
+def _plain_latex_name(text: str) -> str | None:
+    match = _PLAIN_LATEX.fullmatch(text)
+    if match is None:
+        return None
+    head = match["head"]
+    name = _greek(head[1:]) if head.startswith("\\") else head
+    if name is None:
+        return None
+    if match["sub"] is not None:
+        sub = _sub_text(match["sub"])
+        if sub is None:
+            return None
+        name = f"{name}_{sub}"
+    return name
+
+
+def plain_quantity_name(text: str) -> str | None:
+    """The symbol name the LaTeX parser gives a quantity written as LaTeX (`\\dot{\\theta}` -> `theta_dot`,
+    `\\theta_1` -> `theta_1`, `$r$` -> `r`), or None when `text` is not one of those spellings.
+
+    A spelling repair of a name for the unit tools, never a reading of a formula: a test checks that
+    `parse_latex` reads every spelling accepted here as the symbol of that name.
+    """
+    body = text.strip()
+    if len(body) >= 2 and body[0] == body[-1] == "$":
+        body = body[1:-1].strip()
+    dotted = _DOTTED_LATEX.fullmatch(body)
+    if dotted is not None:
+        base = _plain_latex_name(dotted["inner"])
+        if base is None:
+            return None
+        if dotted["after"] is not None:
+            after = _sub_text(dotted["after"])
+            if after is None:
+                return None
+            base = f"{base}_{after}"
+        name: str | None = f"{base}_{dotted['kind']}"
+    else:
+        name = _plain_latex_name(body)
+    if name is None or not _NAME.match(name) or len(name) > SYMBOL_NAME_MAX:
+        return None
+    return name
+
 
 Closure = Literal["determined", "up_to_function", "missing", "none"]
 
@@ -673,6 +744,35 @@ def _time_derivatives(
         )
 
 
+# Functions whose argument must be dimensionless. Not `Abs` or powers: |x| and sqrt(x) carry x's dimension.
+_DIMENSIONLESS_ARGUMENT = (
+    sp.functions.elementary.trigonometric.TrigonometricFunction,
+    sp.functions.elementary.trigonometric.InverseTrigonometricFunction,
+    sp.functions.elementary.hyperbolic.HyperbolicFunction,
+    sp.functions.elementary.hyperbolic.InverseHyperbolicFunction,
+    sp.exp,
+    sp.log,
+)
+
+
+def _only_function_arguments(name: str, parsed: list[sp.Expr]) -> list[str]:
+    """The functions (`sin`, `cos`) whose arguments hold every occurrence of `name`, or [] if it also occurs
+    outside them. Only words for a refusal: nothing is assumed about the symbol."""
+    heads: set[str] = set()
+    for expr in parsed:
+        inside = [
+            f
+            for f in expr.atoms(sp.Function)
+            if isinstance(f, _DIMENSIONLESS_ARGUMENT)
+            and any(s.name == name for s in f.free_symbols)
+        ]
+        rest = expr.xreplace({f: sp.Dummy() for f in inside})
+        if any(s.name == name for s in rest.free_symbols):
+            return []
+        heads |= {type(f).__name__ for f in inside}
+    return sorted(heads)
+
+
 def _refusal(code: InputCode, field_name: str, symbols: list[str]) -> InputDiagnostic:
     return InputDiagnostic(code=code, field=field_name, symbols=symbols, recoverable=True)
 
@@ -732,11 +832,17 @@ def check_units(
     _time_derivatives(symbols, units, readings, unknown)
     lacking = sorted(symbols - units.keys() - set(unknown))
     if lacking:
+        hints = "".join(
+            f" {name} appears only as the argument of {', '.join(heads)}: list it under `unknown` and "
+            "its dimension is found from the equation."
+            for name in lacking
+            if (heads := _only_function_arguments(name, parsed))
+        )
         return fail(
             Status.PARSE_ERROR,
             f"No unit or kind was given for {', '.join(lacking)}. Give each one a unit (or a kind), "
             "or list under `unknown` the quantity whose dimension you want found; nothing is assumed "
-            "about a symbol that was not described.",
+            "about a symbol that was not described." + hints,
         )
     absent = [u for u in unknown if u not in symbols]
     if absent:
