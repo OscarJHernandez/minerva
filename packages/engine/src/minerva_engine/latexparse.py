@@ -786,45 +786,112 @@ _BARE_FUNCTION = re.compile(rf"(?<![\\A-Za-z])({_PLAIN_FUNCTIONS})\s*\(")
 _BARE_GREEK = re.compile(rf"(?<![\\A-Za-z])({_GREEK_WORDS})(?![A-Za-z])")
 
 
-def reject_text_syntax(source: str) -> None:
-    """Refuse input that is plain-text syntax written where LaTeX is expected.
+@dataclass(frozen=True)
+class TextSyntaxProblem:
+    """One piece of plain-text syntax found in LaTeX input: the text as written and the way to write it."""
+
+    message: str
+    symbol: str
+    suggestion: str
+
+
+def text_syntax_problems(source: str) -> list[TextSyntaxProblem]:
+    """Every piece of plain-text syntax in `source`, in the order of the checks, each reported once.
 
     The LaTeX grammar reads a run of letters as a product of one-letter symbols, so `theta_dot` becomes
     `t*h*e*t*a_d*o*t` and `sin(x)` becomes `s*i*n*x`: a verified answer about another expression. These
     forms are almost never meant as products, so they are refused with the way to write them.
     """
     text = _SUBSCRIPT_GROUPS.sub("_{}", _TEXT_COMMANDS.sub("{}", source))
-    if match := _LETTER_SUBSCRIPT.search(text):
+    found: list[TextSyntaxProblem] = []
+    seen: set[str] = set()
+
+    def add(problem: TextSyntaxProblem) -> None:
+        if problem.symbol not in seen:
+            seen.add(problem.symbol)
+            found.append(problem)
+
+    for match in _LETTER_SUBSCRIPT.finditer(text):
         word = match.group(1)
-        raise ParseError(
-            f"a subscript of several letters is ambiguous in LaTeX (`_{word}` reads as the subscript "
-            f"`{word[0]}` times `{word[1:]}`): write `_{{{word}}}`, `\\dot{{x}}` for a time derivative, "
-            "or use format text for names such as theta_dot",
-            code=InputCode.TEXT_SYNTAX_IN_LATEX,
-            symbols=[f"_{word}"],
-            suggestions=[f"_{{{word}}}", "format text"],
-            recoverable=True,
+        add(
+            TextSyntaxProblem(
+                f"a subscript of several letters is ambiguous in LaTeX (`_{word}` reads as the subscript "
+                f"`{word[0]}` times `{word[1:]}`): write `_{{{word}}}`, `\\dot{{x}}` for a time derivative, "
+                "or use format text for names such as theta_dot",
+                f"_{word}",
+                f"_{{{word}}}",
+            )
         )
-    if match := _BARE_FUNCTION.search(text):
+    for match in _BARE_FUNCTION.finditer(text):
         name = match.group(1)
-        raise ParseError(
-            f"`{name}(` without a backslash is read as a product of letters in LaTeX: write "
-            f"`\\{name}(…)`, or use format text",
-            code=InputCode.TEXT_SYNTAX_IN_LATEX,
-            symbols=[f"{name}("],
-            suggestions=[f"\\{name}(…)", "format text"],
-            recoverable=True,
+        add(
+            TextSyntaxProblem(
+                f"`{name}(` without a backslash is read as a product of letters in LaTeX: write "
+                f"`\\{name}(…)`, or use format text",
+                f"{name}(",
+                f"\\{name}(…)",
+            )
         )
-    if match := _BARE_GREEK.search(text):
+    for match in _BARE_GREEK.finditer(text):
         name = match.group(1)
+        add(
+            TextSyntaxProblem(
+                f"the letters `{name}` without a backslash are read as a product of one-letter symbols: "
+                f"write `\\{name}`, or use format text",
+                name,
+                f"\\{name}",
+            )
+        )
+    return found
+
+
+def reject_text_syntax(source: str) -> None:
+    """Refuse input that is plain-text syntax written where LaTeX is expected (see `text_syntax_problems`).
+
+    One source: the first problem found, worded as before. Use `reject_text_syntax_in` for several entries.
+    """
+    problems = text_syntax_problems(source)
+    if problems:
+        first = problems[0]
         raise ParseError(
-            f"the letters `{name}` without a backslash are read as a product of one-letter symbols: "
-            f"write `\\{name}`, or use format text",
+            first.message,
             code=InputCode.TEXT_SYNTAX_IN_LATEX,
-            symbols=[name],
-            suggestions=[f"\\{name}", "format text"],
+            symbols=[first.symbol],
+            suggestions=[first.suggestion, "format text"],
             recoverable=True,
         )
+
+
+def reject_text_syntax_in(sources: Iterable[str]) -> None:
+    """Refuse plain-text syntax in any of several LaTeX entries, naming every problem in one error.
+
+    A model that is told one problem at a time fixes `sin(` and is then told about `theta`: each round trip
+    costs a tool call. With one entry and one problem the error is the same as `reject_text_syntax`.
+    """
+    problems: list[TextSyntaxProblem] = []
+    seen: set[str] = set()
+    for source in sources:
+        for problem in text_syntax_problems(source):
+            if problem.symbol not in seen:
+                seen.add(problem.symbol)
+                problems.append(problem)
+    if not problems:
+        return
+    if len(problems) == 1:
+        message = problems[0].message
+    else:
+        fixes = "; ".join(f"`{p.symbol}` → `{p.suggestion}`" for p in problems)
+        message = (
+            "plain-text syntax in LaTeX is read as a product of letters; write each of these the LaTeX way "
+            f"({fixes}), or use format text"
+        )
+    raise ParseError(
+        message,
+        code=InputCode.TEXT_SYNTAX_IN_LATEX,
+        symbols=[p.symbol for p in problems],
+        suggestions=[*(p.suggestion for p in problems), "format text"],
+        recoverable=True,
+    )
 
 
 def parse_latex(
@@ -845,7 +912,7 @@ def parse_latex(
     limits = limits or Limits()
     if len(source) > limits.max_input_chars:
         raise LimitError("input is too long")
-    reject_text_syntax(source)
+    reject_text_syntax_in([source])
     builder = Builder(
         assumptions,
         limits,

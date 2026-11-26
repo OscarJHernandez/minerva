@@ -342,3 +342,48 @@ def test_the_double_pendulum_fits_the_production_limit(declared: bool) -> None:
     )
     assert report.status is Status.OK, report.message
     assert len(report.modes) == 2
+
+
+# The three particles on a ring of the chat of 2026-11-26: the model dropped |...| from its own Lagrangian, so at
+# the equally spaced point the third spring is stretched. The refusal is right; it now says which force does not
+# balance, from the checked equations of motion, so the model is not left to guess (it wrote a stiffness matrix
+# by hand, and a wrong one).
+RING = (
+    r"\frac{1}{2} R^2 m (\dot{\theta}_1^2 + \dot{\theta}_2^2 + \dot{\theta}_3^2) - \frac{k}{2} \left[ "
+    r"\left(2R\sin\frac{\theta_2-\theta_1}{2} - R\sqrt{3}\right)^2 + "
+    r"\left(2R\sin\frac{\theta_3-\theta_2}{2} - R\sqrt{3}\right)^2 + "
+    r"\left(2R\sin\frac{\theta_1-\theta_3}{2} - R\sqrt{3}\right)^2 \right]"
+)
+RING_POINT = {"theta_1": "0", "theta_2": "2*pi/3", "theta_3": "4*pi/3"}
+RING_ASSUMPTIONS = {"m": ["positive"], "k": ["positive"], "R": ["positive"]}
+
+
+def test_a_refused_point_reports_each_acceleration_there(engine: Engine) -> None:
+    report = engine.expand_motion(
+        RING, ["theta_1", "theta_2", "theta_3"], "t", RING_ASSUMPTIONS, RING_POINT, 1
+    )
+    assert report.status is Status.UNSUPPORTED
+    assert report.equations == [] and report.stiffness_latex is None
+    verification = report.equilibrium_verification
+    assert verification is not None and not verification.passed
+    assert verification.note == "not every acceleration vanishes at the point at zero velocity"
+    shown = {a.name: a.latex for a in report.accelerations_at_point}
+    assert shown == {
+        "theta_1": r"- \frac{\sqrt{3} k}{m}",
+        "theta_2": "0",
+        "theta_3": r"\frac{\sqrt{3} k}{m}",
+    }
+
+
+def test_the_ring_written_consistently_expands_to_the_verified_matrix(engine: Engine) -> None:
+    ring = RING.replace(r"\sin\frac{\theta_1-\theta_3}{2}", r"\sin\frac{\theta_3-\theta_1}{2}")
+    report = engine.expand_motion(
+        ring, ["theta_1", "theta_2", "theta_3"], "t", RING_ASSUMPTIONS, RING_POINT, 1
+    )
+    assert report.status is Status.OK
+    assert report.accelerations_at_point == []
+    diagonal, off = r"- \frac{k}{2 m}", r"\frac{k}{4 m}"
+    rows = [" & ".join(diagonal if i == j else off for j in range(3)) for i in range(3)]
+    assert report.stiffness_latex == (
+        r"\left[\begin{matrix}" + r"\\".join(rows) + r"\end{matrix}\right]"
+    )

@@ -47,6 +47,22 @@ export function ExpansionCard({ report }: { report: ExpansionReport }) {
         </div>
       )}
 
+      {!shown && (report.accelerations_at_point?.length ?? 0) > 0 && (
+        <div className="mt-3 text-sm">
+          <p>
+            Accelerations there at zero velocity{" "}
+            <span className="text-xs text-muted">(from the checked equations of motion)</span>
+          </p>
+          <ul className="mt-1 space-y-1">
+            {report.accelerations_at_point?.map((a) => (
+              <li key={a.name} className="overflow-x-auto">
+                <Math latex={`\\ddot{${a.name_latex || a.name}} = ${a.latex}`} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {shown && report.equations.length > 0 && (
         <div className="mt-4">
           <h4 className="text-sm font-medium">Accelerations to degree {report.order}</h4>

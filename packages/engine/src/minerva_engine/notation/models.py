@@ -33,6 +33,9 @@ class InputCode(StrEnum):
     AMBIGUOUS_NOTATION = "ambiguous_notation"
     INPUT_TOO_LARGE = "input_too_large"
     SYNTAX = "syntax"
+    # Text syntax with a product written by juxtaposition (`2M`, `m1 (x+1)`, `a b`) or square brackets used for
+    # grouping: refused (never read as a product), with every spot and its explicit form (`textparse.py`).
+    IMPLICIT_MULTIPLICATION = "implicit_multiplication"
     DEPENDENT_ARGUMENT_NOT_VARIABLE = "dependent_argument_not_variable"
     DERIVATIVE_OF_EXPRESSION = "derivative_of_expression"
     TOTAL_DERIVATIVE_REQUESTED = "total_derivative_requested"

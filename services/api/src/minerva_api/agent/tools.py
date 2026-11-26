@@ -2907,6 +2907,16 @@ def run_expand_motion(args: ExpandMotionArgs, ctx: ToolContext) -> ToolOutput:
         lines.append(
             "equilibrium: " + ", ".join(f"{e.name} = ${e.latex}$" for e in report.equilibrium)
         )
+    if report.accelerations_at_point:
+        lines.append(
+            "accelerations at this point at zero velocity (from the checked equations of motion): "
+            + ", ".join(f"{a.name}: ${a.latex}$" for a in report.accelerations_at_point)
+        )
+        lines.append(
+            "A point is an equilibrium only where every acceleration is zero; Minerva does not search for "
+            "equilibria. Do not write a linearisation about this point yourself."
+        )
+        quoted.extend((a.latex, NOT_VERIFIED) for a in report.accelerations_at_point)
     for e in report.equations:
         ok = e.verification is not None and e.verification.passed
         lines.append(

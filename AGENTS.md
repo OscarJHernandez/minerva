@@ -672,7 +672,8 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   `mechanics`: the maintainer's choice, so the mechanics group and the turn-context pin stay unchanged.
 - Expansion about an equilibrium (`expansion.py`, tool `expand_motion`) shows a formula only if the EL equations
   and the solved accelerations were confirmed, the point was shown to be an equilibrium, and every expansion
-  passed `check_series`. A point that is not an equilibrium is `unsupported`, not expanded. The sign of ω² is
+  passed `check_series`. A point that is not an equilibrium is `unsupported`, not expanded; the refusal lists each
+  acceleration there at zero velocity (from the checked equations, quoted, never `known_latex`). The sign of ω² is
   stated only when the declared assumptions decide it, a negative ω² is described as a fact about the
   linearised equations, and nothing here says "stable" or "unstable" about the full motion. Mode formulas
   exist only for at most two coordinates and no velocity-linear terms; otherwise the characteristic polynomial.
@@ -1242,6 +1243,12 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   as one symbol and is unaffected. `\left[ \right]`, `\left\{ \right\}` and a bare `[...]` group like parentheses, except
   directly after a letter or a number (`x[2]` would silently be `x*2`); `[a, b]` and mismatched pairs are refused. The
   Lagrangian and Hamiltonian readers refuse an equation (`L = T = ...`) and say to send the part after the last `=`.
+- A parse error names every problem of its input at once, with the form that would be read: LaTeX that contains
+  text syntax lists each `sin(`, bare Greek word or letter subscript (`text_syntax_in_latex`, every cell of a
+  geometry grid together), and text without `*` lists each juxtaposed product (`2M`, `m1 (`, `x y`) and each `[`
+  used for grouping (`implicit_multiplication`); any other text syntax error is `syntax`. These are diagnostics
+  only: text syntax never reads juxtaposition as a product. A declared coordinate the Lagrangian does not use is
+  `declared_name_absent` with the read name spelt alike as the suggestion (`x1` → `x_1`); it is not accepted.
 - In text syntax `E`, `I`, `pi`, `oo` are reserved constants: never use `E` as a variable name in
   handbook entries (use `En`, `Ef`, ...).
 

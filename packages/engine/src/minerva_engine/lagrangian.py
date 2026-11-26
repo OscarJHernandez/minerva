@@ -41,6 +41,7 @@ from .notation.models import (
     InputReading,
     Normalization,
 )
+from .notation.names import near_misses
 from .notation.time_symbol import time_clash, time_clash_message
 from .restrictions import determinant_conditions
 from .textparse import parse_text
@@ -189,24 +190,51 @@ def derive(
     names = {sym.name for sym in L.free_symbols}
     absent = [n for n in coordinates if not names & {n, f"{n}_dot", f"{n}_ddot"}]
     if absent:
-        raise DerivationError(
-            Status.PARSE_ERROR,
-            f"The declared coordinate(s) {', '.join(absent)} appear in neither the position nor the "
-            f"velocity form in the Lagrangian as read (symbols: {', '.join(sorted(names)) or 'none'}). "
-            "Check the spelling: velocities are \\dot{q} in LaTeX and q_dot in text.",
-            InputDiagnostic(
-                code=InputCode.DECLARED_NAME_ABSENT,
-                field="lagrangian",
-                symbols=list(absent),
-                suggestions=[f"{n}_dot" for n in absent],
-                recoverable=True,
-            ),
-        )
+        raise absent_coordinates_error(absent, names)
     derivation = derive_expr(L, coordinates, time)
     derivation.stages = {"parse": parse_ms, **derivation.stages}
     derivation.format = format
     derivation.normalizations = notes
     return derivation
+
+
+def absent_coordinates_error(absent: list[str], names: set[str]) -> DerivationError:
+    """Declared coordinates missing from the Lagrangian as read, with the read symbol each one most likely means.
+
+    `x1` declared while the Lagrangian says `x_1` is a spelling mismatch: the suggestion is `x_1`, the name to
+    declare. Only when nothing read is spelt alike is the velocity form suggested (the coordinate may appear in
+    its velocity only, written another way).
+    """
+    suggestions: list[str] = []
+    hints: list[str] = []
+    for name in absent:
+        close = near_misses(name, names)
+        if close:
+            suggestions.extend(close)
+            hints.append(f"{name} → {' or '.join(close)}")
+        else:
+            suggestions.append(f"{name}_dot")
+    message = (
+        f"The declared coordinate(s) {', '.join(absent)} appear in neither the position nor the "
+        f"velocity form in the Lagrangian as read (symbols: {', '.join(sorted(names)) or 'none'}). "
+    )
+    if hints:
+        message += (
+            f"Declare the coordinates with the names the Lagrangian uses ({'; '.join(hints)}): a declared name "
+            "is matched exactly. "
+        )
+    message += "Velocities are \\dot{q} in LaTeX and q_dot in text."
+    return DerivationError(
+        Status.PARSE_ERROR,
+        message,
+        InputDiagnostic(
+            code=InputCode.DECLARED_NAME_ABSENT,
+            field="lagrangian",
+            symbols=list(absent),
+            suggestions=suggestions,
+            recoverable=True,
+        ),
+    )
 
 
 def reject_equation(source: str, what: str) -> None:

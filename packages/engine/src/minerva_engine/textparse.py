@@ -12,6 +12,8 @@ functions listed in `build.FUNCTIONS` (plus `sqrt` and `root(x, n)`).
 from __future__ import annotations
 
 import ast
+import itertools
+import re
 from collections.abc import Iterable
 from typing import Any
 
@@ -70,10 +72,108 @@ def parse_text(
                 suggestions=["format latex"],
                 recoverable=True,
             ) from exc
-        raise ParseError("could not parse the expression") from exc
-    expr = _convert(tree.body, builder, 0)
+        raise _syntax_error(text, builder) from exc
+    try:
+        expr = _convert(tree.body, builder, 0)
+    except ParseError as exc:
+        if exc.code is not None:
+            raise
+        problems = _juxtaposition(text, builder)
+        if not problems:
+            raise
+        raise _syntax_error(text, builder, problems) from exc
     builder.check_tree(expr)
     return expr
+
+
+_TOKEN = re.compile(
+    r"\s*(?:(?P<num>\d+\.?\d*(?:[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?)"
+    r"|(?P<name>[A-Za-z_][A-Za-z_0-9]*)|(?P<op>\*\*|[-+*/^(),\[\]{}=<>!.:;']|\S))"
+)
+_CALLABLE = frozenset(
+    {*FUNCTIONS, *TEXT_FUNCTION_ALIASES, "sqrt", "root", "log", "Sum", "Product", "Var", "Cov"}
+)
+
+
+def _tokens(text: str) -> list[tuple[str, str, int, int]]:
+    """(kind, text, start, end) of every token; enough to find juxtaposed factors, not a grammar."""
+    out: list[tuple[str, str, int, int]] = []
+    pos = 0
+    while pos < len(text):
+        match = _TOKEN.match(text, pos)
+        if match is None or match.end() == pos:
+            break
+        kind = match.lastgroup or "op"
+        out.append((kind, match.group(kind), match.start(kind), match.end(kind)))
+        pos = match.end()
+    return out
+
+
+def _juxtaposition(text: str, b: Builder) -> list[tuple[str, str]]:
+    """Every place a product is written without `*`, and every `[` used for grouping, as (as written, fix).
+
+    Only called after the parse failed, so nothing that parses today is affected. A name followed by `(` is a
+    call when the name is a function (built in, declared or the unknown function of a functional) or when no
+    space separates them; anywhere else juxtaposition is a product the text grammar does not have.
+    """
+    callable_names = set(_CALLABLE) | set(b.functions)
+    if b.jets is not None:
+        callable_names |= set(b.jets.dependent)
+    toks = _tokens(text)
+    found: list[tuple[str, str]] = []
+    for prev, cur in itertools.pairwise(toks):
+        pk, pt, ps, pe = prev
+        ck, ct, cs, ce = cur
+        left_factor = pk in ("num", "name") or pt in (")", "]")
+        right_factor = ck in ("num", "name") or ct == "("
+        if not (left_factor and right_factor):
+            continue
+        if pk == "name" and ct == "(" and (pt in callable_names or pe == cs):
+            # `f(x)` written without a space is meant as a call; its own error (an undeclared function) stands.
+            continue
+        if pk == "num" and ck == "num":
+            continue
+        found.append((text[ps:ce], f"{pt}*{ct}"))
+    for _kind, tok, start, _end in toks:
+        if tok != "[":
+            continue
+        before = text[:start].rstrip()
+        if before and (before[-1].isalnum() or before[-1] == "_") and (b.allow_sums or b.random):
+            continue  # x[i] or E[...]: a subscript where the operation reads one
+        found.append(("[", "("))
+    seen: set[str] = set()
+    unique = []
+    for written, fixed in found:
+        if written not in seen:
+            seen.add(written)
+            unique.append((written, fixed))
+    return unique
+
+
+def _syntax_error(
+    text: str, b: Builder, problems: list[tuple[str, str]] | None = None
+) -> ParseError:
+    """The error for text that is not in the grammar, with the spots to change when they can be named."""
+    if problems is None:
+        problems = _juxtaposition(text, b)
+    if not problems:
+        return ParseError(
+            "could not parse the expression: text syntax is Python-like (`2*x`, `x^2`, `sin(x)`, `theta_dot`, "
+            "parentheses for grouping)",
+            code=InputCode.SYNTAX,
+            recoverable=True,
+        )
+    fixes = "; ".join(
+        "use ( ) for grouping instead of [ ]" if w == "[" else f"`{w}` → `{f}`" for w, f in problems
+    )
+    return ParseError(
+        "could not parse the expression: text syntax needs `*` for every product and ( ) for grouping "
+        f"({fixes})",
+        code=InputCode.IMPLICIT_MULTIPLICATION,
+        symbols=[w for w, _ in problems],
+        suggestions=[f for _, f in problems],
+        recoverable=True,
+    )
 
 
 def _convert(node: ast.AST, b: Builder, depth: int) -> sp.Expr:

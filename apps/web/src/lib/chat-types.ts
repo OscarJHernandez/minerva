@@ -43,6 +43,8 @@ export interface ExpansionReport {
     passed: boolean;
     note: string;
   } | null;
+  /** At a refused point: each coordinate's acceleration there at zero velocity. Absent in older cards. */
+  accelerations_at_point?: { name: string; latex: string; name_latex: string }[];
   equations: {
     coordinate: string;
     full_latex: string;

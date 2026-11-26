@@ -94,6 +94,9 @@ class ExpansionReport(InputAware):
     equilibrium: list[NamedLatex] = Field(default_factory=list)
     order: int = 0
     equilibrium_verification: Verification | None = None
+    # When the point is refused as not an equilibrium: each coordinate's acceleration there at zero velocity,
+    # from the equations of motion that were checked (so the reader sees which force does not balance).
+    accelerations_at_point: list[NamedLatex] = Field(default_factory=list)
     equations: list[ExpandedEquation] = Field(default_factory=list)
     stiffness_latex: str | None = None  # A in  uddot = A u + B v + ...
     velocity_latex: str | None = None  # B, only when it is not zero
@@ -114,16 +117,21 @@ def _fail(status: Status, message: str, **extra: object) -> ExpansionReport:
     return ExpansionReport(status=status, message=message, **extra)
 
 
-def _zero_check(expr: sp.Expr, note: str) -> Verification:
-    """Symbolic and numeric test that `expr` is zero (reported separately)."""
+def _zero_check(expr: sp.Expr, note: str, failed_note: str | None = None) -> Verification:
+    """Symbolic and numeric test that `expr` is zero (reported separately).
+
+    `note` says what was established when the check passes; `failed_note`, when given, what was found when it
+    does not (a note that reads "every acceleration vanishes" next to `passed: false` contradicts itself).
+    """
     symbolic = sp.simplify(expr) == 0
     checked, agreed = numeric_check(expr, sp.Integer(0))
+    passed = checked >= MIN_VALID_POINTS and agreed == checked
     return Verification(
         symbolic_zero=bool(symbolic),
         numeric_points_checked=checked,
         numeric_points_agreed=agreed,
-        passed=checked >= MIN_VALID_POINTS and agreed == checked,
-        note=note,
+        passed=passed,
+        note=note if passed or failed_note is None else failed_note,
     )
 
 
@@ -314,13 +322,22 @@ def prepare(
     equilibrium_check = _zero_check(
         sum((sp.Abs(r) ** 2 for r in residuals), sp.Integer(0)),
         "every acceleration vanishes at the point, at zero velocity",
+        "not every acceleration vanishes at the point at zero velocity",
     )
     if not equilibrium_check.passed:
+        accelerations = [
+            NamedLatex(name=n, latex=to_latex(sp.simplify(r)), name_latex=shown_coordinates[i])
+            for i, (n, r) in enumerate(zip(coordinates, residuals, strict=True))
+        ]
         return Refusal(
             Status.UNSUPPORTED,
             "This is not an equilibrium of the system: the accelerations do not all vanish there "
             "at zero velocity. Expansion about a non-equilibrium point is not supported.",
-            {**base, "equilibrium_verification": equilibrium_check},
+            {
+                **base,
+                "equilibrium_verification": equilibrium_check,
+                "accelerations_at_point": accelerations,
+            },
         )
     base["equilibrium_verification"] = equilibrium_check
     return Prepared(d, q0, shown_coordinates, base)
