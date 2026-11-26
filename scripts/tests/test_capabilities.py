@@ -84,3 +84,38 @@ def test_formula_image_examples_use_the_strict_parser(data: dict[str, Any]) -> N
     cap = next(c for c in data["capabilities"] if c["id"] == "formula-image")
     statuses = {ex["id"]: ex["status"] for ex in cap["examples"]}
     assert statuses == {"image-read-clean": "ok", "image-read-ambiguous": "parse_error"}
+
+
+class _CutEngine:
+    """Stands in for an engine whose discovery ladder hit its wall-clock deadline (a busy runner)."""
+
+    def __init__(self, cut_times: int) -> None:
+        self.calls = 0
+        self.cut_times = cut_times
+
+    def discover_invariants(self, *args: Any, **kwargs: Any) -> Any:
+        from minerva_engine.discovery import DiscoveryReport, TierRecord
+
+        self.calls += 1
+        cut = self.calls <= self.cut_times
+        return DiscoveryReport(
+            status="ok",  # type: ignore[arg-type]
+            tiers=[TierRecord(index=0, code="d1p1h1t0", description="x", unknowns=1)],
+            stop_reason="time_budget" if cut else "ladder_exhausted",
+        )
+
+
+_DISCOVERY_SPEC = {"id": "x", "input": "L", "coordinates": ["q"], "title": "t", "op": "discovery"}
+
+
+def test_a_discovery_search_cut_by_the_clock_is_refused_not_printed_shorter() -> None:
+    engine = _CutEngine(cut_times=10**6)
+    with pytest.raises(MODULE.TimeCutError, match="cut by its time budget"):
+        MODULE.run_discovery(_DISCOVERY_SPEC, engine, None)
+    assert engine.calls == MODULE.DISCOVERY_ATTEMPTS
+
+
+def test_a_cut_that_does_not_repeat_is_rerun_and_only_the_complete_report_is_used() -> None:
+    engine = _CutEngine(cut_times=1)
+    MODULE.run_discovery(_DISCOVERY_SPEC, engine, None)
+    assert engine.calls == 2

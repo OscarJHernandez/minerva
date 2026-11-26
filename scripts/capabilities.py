@@ -827,20 +827,45 @@ def run_invariants(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> d
     return _example(spec, r.status.value, inputs, outputs, checks, notes)
 
 
+class TimeCutError(RuntimeError):
+    """An example's search was ended by the clock, so its report would depend on how busy the machine is."""
+
+
+DISCOVERY_ATTEMPTS = 3
+
+
+def _time_cut(r: Any) -> bool:
+    return r.stop_reason == "time_budget" or any(t.outcome == "deadline" for t in r.tiers)
+
+
 def run_discovery(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
     system = spec.get("system", "lagrangian")
-    r = engine.discover_invariants(
-        spec["input"],
-        spec["coordinates"],
-        system,
-        spec.get("momenta"),
-        spec.get("angles", []),
-        spec.get("budget", "standard"),
-        # A pinned family keeps a long search off the clock, so the page never depends on runner speed.
-        pins=Pins(**spec["pins"]) if "pins" in spec else None,
-        time=spec.get("time", "t"),
-        assumptions=spec.get("assumptions"),
-    )
+    # The ladder stops at a wall-clock deadline of its own (`discovery.DEADLINE_FRACTION` of the budget), which
+    # the engine's timeout does not move. A search it cut short lists fewer families than the same search on a
+    # quiet machine, so the page would differ from run to run: try again, and if it is still cut, refuse to
+    # produce output rather than print a shorter report. Load may turn an answer into a failure here, never
+    # into a different generated page.
+    for _attempt in range(DISCOVERY_ATTEMPTS):
+        r = engine.discover_invariants(
+            spec["input"],
+            spec["coordinates"],
+            system,
+            spec.get("momenta"),
+            spec.get("angles", []),
+            spec.get("budget", "standard"),
+            # A pinned family keeps a long search off the clock, so the page never depends on runner speed.
+            pins=Pins(**spec["pins"]) if "pins" in spec else None,
+            time=spec.get("time", "t"),
+            assumptions=spec.get("assumptions"),
+        )
+        if not _time_cut(r):
+            break
+    else:
+        raise TimeCutError(
+            f"example {spec.get('id')!r}: the discovery search was cut by its time budget in "
+            f"{DISCOVERY_ATTEMPTS} attempts (machine too busy); nothing was generated. Run it again on a "
+            "quieter machine; do not commit a shorter report."
+        )
     outputs: list[dict[str, str]] = []
     checks: list[str] = []
     notes: list[str] = []
