@@ -61,7 +61,7 @@ The full guide, including addresses for Linux and remote hosts, troubleshooting 
 
 ## Development without Docker
 
-Requirements: [uv](https://docs.astral.sh/uv/), Node 20.19+ (24 LTS recommended), pnpm 12, and
+Requirements: [uv](https://docs.astral.sh/uv/), Node 24 LTS (24.15 or later; `nvm use` or `fnm use` reads `.nvmrc`), pnpm 12, and
 optionally PostgreSQL 17 (tests and local runs default to SQLite).
 
 ```bash
