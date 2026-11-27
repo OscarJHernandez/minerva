@@ -163,6 +163,26 @@ def _check_support(
                         role="given",
                     )
                 )
+    if values and hi != sp.oo and hi.free_symbols & estimated and data.action != "mle":
+        # The density is written without its indicator (uniform 1/theta), so a likelihood, score or
+        # posterior of these data is that formula only where the unknown bound admits every value. An
+        # estimator checks this itself (admissibility); every other result holds only given it.
+        top = max(values)
+        relation = sp.Gt(hi, top) if hi_open else sp.Ge(hi, top)
+        conditions.append(
+            Condition(
+                latex=to_latex(relation),
+                established=False,
+                how="the support ends at a parameter being estimated: the formula is the likelihood "
+                "of these data only where that end admits every observation",
+                parameter=next(
+                    (n for n, s in family.symbols.items() if s in hi.free_symbols & estimated),
+                    None,
+                ),
+                # a premise of the result (see `statmodel._premise_unestablished_constraints`)
+                role="given",
+            )
+        )
     return conditions
 
 
@@ -180,4 +200,7 @@ def fits_at(
     bound = hi.xreplace(swap).subs(point)
     if bound == sp.oo or bound.free_symbols:
         return True
-    return all(_decided(sp.Le(v, bound)) is not False for v in values)
+    hi_open = family.support_open[1]
+    return all(
+        _decided(sp.Lt(v, bound) if hi_open else sp.Le(v, bound)) is not False for v in values
+    )
