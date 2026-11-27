@@ -359,6 +359,14 @@ def op_statistical_model(payload: dict[str, Any]) -> dict[str, Any]:
     return result.model_dump(mode="json")
 
 
+def op_multivariate_normal(payload: dict[str, Any]) -> dict[str, Any]:
+    from .stats.mvn import mvn
+    from .stats.mvn_models import MvnInput
+
+    result = mvn(MvnInput(**payload["input"]), Limits(**payload["limits"]))
+    return result.model_dump(mode="json")
+
+
 def op_statmech(payload: dict[str, Any]) -> dict[str, Any]:
     from .statmech.models import StatMechInput
     from .statmech.operation import statmech
@@ -976,6 +984,7 @@ OPERATIONS: dict[str, Callable[[dict[str, Any]], dict[str, Any]]] = {
     "sums": op_sums,
     "expectation": op_expectation,
     "statistical_model": op_statistical_model,
+    "multivariate_normal": op_multivariate_normal,
     "statmech": op_statmech,
     "identities": op_identities,
     "transform": op_transform,
