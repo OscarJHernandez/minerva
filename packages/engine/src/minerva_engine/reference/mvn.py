@@ -13,6 +13,7 @@ import sympy as sp
 
 from ..service import Engine
 from ..stats.mvn_models import MvnInput
+from ..textparse import parse_text
 from .core import Problem, verdict
 
 MEAN = ["1", "-2"]
@@ -22,7 +23,7 @@ XY = ["x", "y"]
 
 def _equal(texts: list[str], expected: list[sp.Rational]) -> bool:
     return len(texts) == len(expected) and all(
-        sp.nsimplify(sp.Rational(t)) == e for t, e in zip(texts, expected, strict=True)
+        sp.simplify(parse_text(t) - e) == 0 for t, e in zip(texts, expected, strict=True)
     )
 
 

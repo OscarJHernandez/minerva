@@ -252,6 +252,12 @@ def _corrupt(result: Any) -> Any:
             )
             for m in modes
         ]
+    if getattr(result, "mean_text", None):  # the bivariate Normal: shift every mean entry
+        updates["mean_text"] = [f"{t} + 1/1000" for t in result.mean_text]
+    if getattr(result, "covariance_text", None):
+        updates["covariance_text"] = [
+            [f"{t} + 1/1000" for t in row] for row in result.covariance_text
+        ]
     if getattr(result, "frequency_latex", None):
         updates["frequency_latex"] = "\\omega = 2"
     if getattr(result, "restrictions_latex", None):
