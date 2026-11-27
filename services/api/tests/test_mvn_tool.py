@@ -257,3 +257,35 @@ def test_three_turns_re_send_the_model_the_card_returned(
             card["data"]["provenance"]["who"] == "user"
         )  # the numbers are in the user's first message
     assert json.dumps(third["trace"]).count("multivariate_normal") >= 1
+
+
+def test_a_name_is_not_a_product_of_its_letters(ctx: ToolContext) -> None:
+    """Review finding: `ab` written by the user is one name; the call's `a*b` is a product."""
+    out = execute(
+        "multivariate_normal",
+        {
+            "mean": ["0", "0"],
+            "covariance": [["s", "a*b"], ["a*b", "s"]],
+            "variables": ["x", "y"],
+            "action": "moments",
+        },
+        with_messages(ctx, "Mean 0, 0 and covariance [[s, ab], [ab, s]] for (x, y)."),
+    )
+    assert out.card.data["provenance"]["who"] == "assistant"
+    assert out.card.data["provenance"]["values"] == ["a*b"]
+
+
+def test_a_number_written_for_the_mean_is_not_a_covariance_entry(ctx: ToolContext) -> None:
+    """Review finding: zeros off the diagonal are a claim of no correlation; a 0 in the mean is not it."""
+    out = execute(
+        "multivariate_normal",
+        {
+            "mean": ["0", "0"],
+            "covariance": [["1", "0"], ["0", "1"]],
+            "variables": ["x", "y"],
+            "action": "density",
+        },
+        with_messages(ctx, "A bivariate normal with mean (0, 0). Give its density for x and y."),
+    )
+    assert out.card.data["provenance"]["who"] == "assistant"
+    assert set(out.card.data["provenance"]["values"]) == {"1", "0"}

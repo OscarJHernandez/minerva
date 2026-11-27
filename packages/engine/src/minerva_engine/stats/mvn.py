@@ -211,6 +211,10 @@ def _density_2d(m: _Model, x: sp.Symbol, y: sp.Symbol) -> sp.Expr:
     return sp.exp(-quadratic / 2) / (2 * sp.pi * sp.sqrt(m.det))
 
 
+def _correlation(m: _Model) -> sp.Expr:
+    return sp.simplify(m.S[0, 1] / sp.sqrt(m.S[0, 0] * m.S[1, 1]))
+
+
 def _tidy(e: sp.Expr) -> sp.Expr:
     return sp.factor(sp.cancel(sp.expand(e)))
 
@@ -277,9 +281,16 @@ def _read_back(expr: sp.Expr, m: _Model) -> sp.Expr:
     assumptions = dict(m.data.assumptions)
     for v in m.vars or []:
         assumptions[v.name] = ["real"]
-    return parse_expression(
-        ExpressionInput(input=to_text(expr), format="text", assumptions=assumptions), m.limits
-    )
+    try:
+        return parse_expression(
+            ExpressionInput(input=to_text(expr), format="text", assumptions=assumptions), m.limits
+        )
+    except MinervaMathError as exc:
+        raise MvnRefusal(
+            Status.NOT_VERIFIED,
+            "verification_failed",
+            "the printed result could not be read back for its check; nothing is shown",
+        ) from exc
 
 
 def _lambda(expr: sp.Expr, args: list[sp.Symbol], point: Point) -> Callable[..., float]:
@@ -345,7 +356,16 @@ def _run_checks(
             break
         try:
             verdicts = one(point)
-        except (ValueError, ZeroDivisionError, OverflowError, TypeError, np.linalg.LinAlgError):
+        except (
+            ValueError,
+            ZeroDivisionError,
+            OverflowError,
+            TypeError,
+            NameError,
+            AttributeError,
+            np.linalg.LinAlgError,
+        ):
+            # a point that cannot be evaluated (a function the float route lacks): skipped, never agreed
             continue
         for check, ok in zip(checks, verdicts, strict=True):
             check.points_checked += 1
@@ -406,7 +426,7 @@ def _density(m: _Model, result: MvnResult, deadline: float) -> None:
 
 
 def _moments(m: _Model, result: MvnResult, deadline: float) -> None:
-    rho = sp.simplify(m.S[0, 1] / sp.sqrt(m.S[0, 0] * m.S[1, 1]))
+    rho = _correlation(m)
     shown = _read_back(rho, m)
     result.correlation_text, result.correlation_latex = to_text(rho), to_latex(rho)
     mom = MvnCheck(
@@ -434,7 +454,7 @@ def _moments(m: _Model, result: MvnResult, deadline: float) -> None:
             _agrees(v0, _value(m.S[0, 0], point), s[0, 0]),
             _agrees(cov, _value(m.S[0, 1], point), math.sqrt(s[0, 0] * s[1, 1])),
             _agrees(v1, _value(m.S[1, 1], point), s[1, 1]),
-            abs(corr - _value(shown, point)) < 1e-8,
+            abs(corr - _value(shown, point)) <= REL_TOL * max(abs(corr), 1e-4),
         ]
         return [all(ok)]
 
@@ -503,6 +523,12 @@ def _conditional(m: _Model, result: MvnResult, deadline: float) -> None:
     j = m.index_of(name, "the component conditioned on")
     i = 1 - j
     value = _parse(text, m.data, m.limits, "the value conditioned on")
+    if {v.name for v in m.need_variables()} & {sym.name for sym in value.free_symbols}:
+        raise MvnRefusal(
+            Status.PARSE_ERROR,
+            "parse_error",
+            "the value conditioned on is a number or a parameter, not a component of the distribution",
+        )
     if value.is_real is not True:
         m.conditions.append(
             Condition(
@@ -584,6 +610,17 @@ def _affine(m: _Model, result: MvnResult, deadline: float) -> None:
             "map_singular",
             f"{what}: the image is a degenerate distribution without a density, which is not supported",
         )
+    if any(e.is_real is not True for e in [*a, *b]):
+        m.conditions.append(
+            Condition(
+                latex="\\text{the entries of } A \\text{ and } b \\text{ are real}",
+                established=False,
+                how="a symbol not declared real is complex, and then the covariance of A X + b is "
+                "not A Sigma A^T",
+                parameter="matrix",
+                role="given",
+            )
+        )
     if sp.simplify(rank_expr).is_nonzero is not True:
         m.conditions.append(
             Condition(
@@ -617,24 +654,39 @@ def _affine(m: _Model, result: MvnResult, deadline: float) -> None:
         def comp(r: int) -> Callable[[float, float], float]:
             return lambda u, w: an[r, 0] * u + an[r, 1] * w + bn[r]
 
-        def weighted(r: int) -> Callable[[float, float], float]:
+        # each component in units of a rough scale of its own (from the numeric A and Sigma), so the
+        # integrator's absolute error floor is relative to that component: an entry of 1e-6 is checked
+        # to 1e-15, not to the scale of the largest one
+        rough = [
+            math.sqrt(sum(an[r, k] ** 2 * s[k, k] for k in range(2))) or 1.0 for r in range(rows)
+        ]
+
+        def centred(r: int) -> Callable[[float, float], float]:
             g = comp(r)
-            return lambda u, w: g(u, w) * f(u, w)
+            return lambda u, w: (g(u, w) - bn[r]) / rough[r] * f(u, w)
 
         def product(r: int, c: int, mr: float, mc: float) -> Callable[[float, float], float]:
             g, h = comp(r), comp(c)
-            return lambda u, w: (g(u, w) - mr) * (h(u, w) - mc) * f(u, w)
+            return lambda u, w: (g(u, w) - mr) / rough[r] * (h(u, w) - mc) / rough[c] * f(u, w)
 
-        means = [_double(weighted(r), box) for r in range(rows)]
-        ok = []
-        scale_x = math.sqrt(max(s[0, 0], s[1, 1])) * (np.abs(an).max() + 1)
+        means: list[tuple[float, float]] = []
         for r in range(rows):
-            ok.append(_agrees(means[r], _value(shown_mean[r], point), abs(means[r][0]) + scale_x))
+            v, err = _double(centred(r), box)
+            means.append((bn[r] + v * rough[r], err * rough[r]))
+        cov: dict[tuple[int, int], tuple[float, float]] = {}
+        for r in range(rows):
+            for c in range(r, rows):
+                v, err = _double(product(r, c, means[r][0], means[c][0]), box)
+                cov[(r, c)] = cov[(c, r)] = (v * rough[r] * rough[c], err * rough[r] * rough[c])
+        ok = [cov[(r, r)][0] > 0 for r in range(rows)]
+        for r in range(rows):
+            spread = math.sqrt(max(cov[(r, r)][0], 0.0))
+            ok.append(_agrees(means[r], _value(shown_mean[r], point), abs(means[r][0]) + spread))
         for r in range(rows):
             for c in range(rows):
-                mr, mc = means[r][0], means[c][0]
-                found = _double(product(r, c, mr, mc), box)
-                ok.append(_agrees(found, _value(shown_cov[r][c], point), scale_x**2))
+                # each entry against its own scale, sqrt(Var_r Var_c) of the reference
+                scale = math.sqrt(max(cov[(r, r)][0] * cov[(c, c)][0], 0.0))
+                ok.append(_agrees(cov[(r, c)], _value(shown_cov[r][c], point), scale))
         return [all(ok)]
 
     nonzero = [rank_expr]

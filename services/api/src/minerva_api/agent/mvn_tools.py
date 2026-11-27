@@ -114,14 +114,21 @@ def _as_number(entry: str) -> float | None:
         return None
 
 
+_COVARIANCE_WORDS = re.compile(
+    r"covarian|varian|correlat|independen|uncorrelat|sigma|matri|\u03a3|\u03c3", re.I
+)
 _SEPARATORS = re.compile(r"[&,;\n]|\\\\|\\(?:begin|end)\{[A-Za-z*]+\}|\band\b")
 
 
 def _flatten(text: str) -> str:
     """A piece of text in the spelling shared by a user's `\\sigma_{x}^{2}` and a call's `sigma_x^2`."""
-    for noise in ("\\left", "\\right", "\\cdot", "\\,", "\\;", "\\!"):
+    for noise in ("\\left", "\\right", "\\,", "\\;", "\\!"):
         text = text.replace(noise, "")
-    return re.sub(r"[\s\\${}*]", "", text)
+    # A product stays a product: `a*b` is not the name `ab`. In LaTeX a command starts a new factor
+    # (`\rho\sigma_x` is rho times sigma_x), so a backslash reads as a product sign.
+    text = text.replace("\\cdot", "*")
+    text = re.sub(r"\*?\s*\\", "*", text)
+    return re.sub(r"[\s${}]", "", text).lstrip("*")
 
 
 def _segments(messages: Sequence[str]) -> list[str]:
@@ -159,9 +166,23 @@ def provenance(args: MvnArgs, ctx: ToolContext) -> tuple[str, list[str]]:
     entries = _model_entries(args)
     if delegation_active(messages):
         return "assistant_delegated", entries
+    # A covariance entry counts as the user's only if it is in a message about the covariance: a 0 or a 1
+    # written for the mean is not a statement that the components are uncorrelated.
+    about_covariance = [m for m in messages if _COVARIANCE_WORDS.search(m)]
     segments = _segments(messages)
+    cov_segments = _segments(about_covariance)
     numbers = [n for m in messages for n in numbers_in(m)]
-    mine = [e for e in dict.fromkeys(entries) if not _written(e, segments, numbers)]
+    cov_numbers = [n for m in about_covariance for n in numbers_in(m)]
+    cov_entries = {e for row in args.covariance for e in row}
+    mine = [
+        e
+        for e in dict.fromkeys(entries)
+        if not (
+            _written(e, cov_segments, cov_numbers)
+            if e in cov_entries
+            else _written(e, segments, numbers)
+        )
+    ]
     return ("assistant" if mine else "user"), mine
 
 

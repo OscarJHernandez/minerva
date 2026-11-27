@@ -259,3 +259,47 @@ def test_statistical_model_points_a_multivariate_family_to_the_operation(engine)
 
     r = engine.statistical_model(StatModelInput(family="multivariate_normal", action="moments"))
     assert r.status is Status.UNSUPPORTED and "multivariate_normal" in r.message
+
+
+# --------------------------------------------------------------------- review findings (Grok, #229)
+
+
+def test_symbols_of_the_map_are_a_premise_unless_declared_real(engine) -> None:
+    r = engine.multivariate_normal(
+        MvnInput(**BASE, action="affine", matrix=[["1", "0"], ["0", "1"]], offset=["c", "0"])
+    )
+    assert r.status is Status.OK and r.evidence == "conditional"
+    assert any("A" in p and "real" in p for p in r.premises), r.premises
+    real = engine.multivariate_normal(
+        MvnInput(**BASE, action="affine", matrix=[["1", "0"], ["0", "1"]], offset=["c", "0"],
+                 assumptions={"c": ["real"]})
+    )  # fmt: skip
+    assert real.status is Status.OK and real.evidence == "identity"
+
+
+def test_a_tiny_entry_of_an_affine_image_is_checked_on_its_own_scale(monkeypatch) -> None:
+    kw = dict(
+        mean=["0", "0"], covariance=[["1", "0"], ["0", "1"]], variables=["x", "y"],
+        action="affine", matrix=[["1000", "0"], ["0", "1/1000"]], offset=["0", "0"],
+    )  # fmt: skip
+    ok = direct(**kw)
+    assert ok.status is Status.OK and ok.covariance_text == [["1000000", "0"], ["0", "1/1000000"]]
+    right = M._tidy
+    monkeypatch.setattr(
+        M, "_tidy", lambda e: sp.Integer(0) if e == sp.Rational(1, 10**6) else right(e)
+    )
+    nothing_shown(direct(**kw))
+
+
+def test_a_correlation_off_by_one_in_a_million_is_rejected(monkeypatch) -> None:
+    kw = dict(mean=["0", "0"], covariance=[["1", "1/2"], ["1/2", "1"]], variables=["x", "y"])
+    assert direct(**kw, action="moments").status is Status.OK
+    right = M._correlation
+    monkeypatch.setattr(M, "_correlation", lambda m: right(m) * sp.Rational(1000001, 1000000))
+    nothing_shown(direct(**kw, action="moments"))
+
+
+def test_a_conditioning_value_may_not_name_a_component(engine) -> None:
+    r = engine.multivariate_normal(MvnInput(**BASE, action="conditional", given={"y": "x"}))
+    assert (r.status, r.reason) == (Status.PARSE_ERROR, "parse_error")
+    assert "not a component" in r.message
