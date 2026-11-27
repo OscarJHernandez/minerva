@@ -36,7 +36,15 @@ from .statmodel_types import Reading, Refusal
 TOL = mp.mpf(10) ** -8
 
 
-def _prior(data: StatModelInput, limits: Limits) -> tuple[Family, str | None, dict[str, sp.Expr]]:
+def _prior(
+    data: StatModelInput, limits: Limits
+) -> tuple[Family, str | None, dict[str, sp.Expr], list[Condition]]:
+    """The prior family, its parametrisation, the hyperparameters and their constraints.
+
+    A constraint the declarations violate is `parameter_invalid`; one they cannot decide (`alpha > 0`
+    for an undeclared `alpha`) is an unestablished condition of a given parameter, so the result holds
+    only given it (`statmodel._premise_unestablished_constraints`), as for the model's own parameters.
+    """
     spec = data.prior
     if spec is None:
         raise ParseError("give the prior: its family and hyperparameters")
@@ -53,6 +61,7 @@ def _prior(data: StatModelInput, limits: Limits) -> tuple[Family, str | None, di
     if set(spec.parameters) - names:
         raise ParseError(f"the prior has the parameters {', '.join(sorted(names))}")
     hyper: dict[str, sp.Expr] = {}
+    conditions: list[Condition] = []
     for p in params:
         text = spec.parameters.get(p.name)
         if text is None:
@@ -64,14 +73,26 @@ def _prior(data: StatModelInput, limits: Limits) -> tuple[Family, str | None, di
         value = parse_expression(
             ExpressionInput(input=text, format="text", assumptions=data.assumptions), limits
         )
-        if decide(p.constraint, value) is False:
+        verdict = decide(p.constraint, value)
+        if verdict is False:
             raise Refusal(
                 Status.CONDITIONS_NOT_SATISFIED,
                 "parameter_invalid",
                 f"the prior's {p.name} must satisfy: {DESCRIPTIONS[p.constraint].format(name=to_text(value))}",
             )
         hyper[p.name] = value
-    return family, spec.parametrization, hyper
+        conditions.append(
+            Condition(
+                latex=DESCRIPTIONS[p.constraint].format(name=to_latex(value)),
+                established=verdict is True,
+                how="from the declared assumptions"
+                if verdict is True
+                else "part of the parameter space of the prior; the declarations cannot express it",
+                parameter=f"prior:{p.name}",
+                role="given",
+            )
+        )
+    return family, spec.parametrization, hyper, conditions
 
 
 def _drop_free(expr: sp.Expr, theta: sp.Symbol) -> tuple[sp.Expr, sp.Expr]:
@@ -166,7 +187,7 @@ def _posterior_density(
 def run_posterior(
     data: StatModelInput, reading: Reading, limits: Limits, deadline: float
 ) -> StatModelResult:
-    prior_family, prior_key, hyper = _prior(data, limits)
+    prior_family, prior_key, hyper, prior_conditions = _prior(data, limits)
     lk, ab, theta, kernel, dropped, _ = _log_kernel(data, reading, limits, hyper, prior_family)
     found = match_family(kernel, theta, prior_family, prior_key)
     if found is None:
@@ -182,7 +203,17 @@ def run_posterior(
         restored = _candidate_parameters(data, family, key, limits)
 
     check, mass = _verify(
-        data, reading, lk, theta, prior_family, hyper, family, key, restored, deadline
+        data,
+        reading,
+        lk,
+        theta,
+        prior_family,
+        prior_key,
+        hyper,
+        family,
+        key,
+        restored,
+        deadline,
     )
     if not (check.passed and mass.passed):
         return StatModelResult(
@@ -221,7 +252,7 @@ def run_posterior(
         ),
         checks=[check, mass],
         premises=[*lk.premises, "the prior is as stated; it is an assumption, not a fact"],
-        conditions=[*reading.conditions, *conditions],
+        conditions=[*reading.conditions, *prior_conditions, *conditions],
         evidence="conditional" if lk.premises else "identity",
         message="equal to prior times likelihood divided by its integral (quadrature) at sampled "
         "values; numerical agreement is evidence, not a proof",
@@ -294,6 +325,7 @@ def _verify(
     lk: lh.Likelihood,
     theta: sp.Symbol,
     prior_family: Family,
+    prior_key: str | None,
     hyper: dict[str, sp.Expr],
     family: Family,
     key: str | None,
@@ -325,10 +357,24 @@ def _verify(
     symbols = [s for s in symbols if s != obs.x and (obs.n is None or s != obs.n)]
     prior_symbol = prior_family.symbols
     support_lo, support_hi = prior_family.support(prior_symbol)
+    constraints = {p.name: p.constraint for p in prior_family.params(prior_key)}
+    # a hyperparameter given as a bare undeclared symbol is sampled inside the prior's parameter space;
+    # every point is then checked against all hyperparameter constraints (the result holds only there)
+    positive = {
+        v for n, v in hyper.items() if isinstance(v, sp.Symbol) and constraints[n] == "positive"
+    }
     for _ in range(60):
         if proportional.points_checked >= 4 or time.monotonic() > deadline:
             break
-        point = {s: sample_symbol(s, rng) for s in symbols}
+        point = {
+            s: sp.Rational(rng.randint(2, 16), 4) if s in positive else sample_symbol(s, rng)
+            for s in symbols
+        }
+        if any(
+            decide(constraints[n], sp.nsimplify(v.subs(point))) is not True
+            for n, v in hyper.items()
+        ):
+            continue
         values = _data(lk, reading, point, rng)
         if values is None:
             continue

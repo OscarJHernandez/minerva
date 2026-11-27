@@ -465,3 +465,50 @@ def test_the_constraint_of_an_estimated_parameter_is_not_a_premise(engine) -> No
     )
     assert not any("parameter space" in p for p in result.premises)
     assert {c.role for c in result.conditions if c.parameter == "p"} == {"estimated"}
+
+
+def _undeclared_prior(engine, **kw):
+    """A Bernoulli posterior whose Beta hyperparameters are undeclared symbols (used to crash)."""
+    return engine.statistical_model(
+        StatModelInput(
+            family="bernoulli",
+            estimate=["p"],
+            observation="x",
+            action="posterior",
+            prior={"family": "beta", "parameters": {"alpha": "a", "beta": "b"}},
+            # declared like the family's observation, so a candidate's x is the same symbol
+            assumptions={"x": ["integer", "nonnegative"]},
+            **kw,
+        )
+    )
+
+
+def test_an_undeclared_prior_hyperparameter_is_a_premise(engine) -> None:
+    r = _undeclared_prior(engine)
+    assert r.status is Status.OK and r.evidence == "conditional"
+    assert any("a > 0" in p for p in r.premises) and any("b > 0" in p for p in r.premises)
+    assert all(s.evidence == "conditional" for s in r.steps)
+    assert all(c.passed for c in r.checks)
+    hyper = {c.parameter: c for c in r.conditions if (c.parameter or "").startswith("prior:")}
+    assert set(hyper) == {"prior:alpha", "prior:beta"}
+    assert not any(c.established for c in hyper.values())
+
+
+@pytest.mark.parametrize(
+    "wrong",
+    [
+        {"posterior:alpha": "a", "posterior:beta": "b"},  # not updated
+        {"posterior:alpha": "a + x", "posterior:beta": "b + x"},  # wrong failure count
+        {"posterior:alpha": "a + x", "posterior:beta": "b - x + 1 + 1/1000000"},
+    ],
+)
+def test_wrong_posteriors_with_undeclared_hyperparameters_are_rejected(engine, wrong) -> None:
+    r = _undeclared_prior(engine, candidate=wrong)
+    assert r.status is Status.NOT_VERIFIED and r.posterior is None
+
+
+def test_the_right_posterior_with_undeclared_hyperparameters_is_accepted(engine) -> None:
+    r = _undeclared_prior(
+        engine, candidate={"posterior:alpha": "a + x", "posterior:beta": "b - x + 1"}
+    )
+    assert r.status is Status.OK and r.evidence == "conditional"

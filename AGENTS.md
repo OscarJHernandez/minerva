@@ -1176,7 +1176,7 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   "agrees" with a divergent integral; such a moment is `convergence_not_established`. Parameter constraints are decided by
   `stats/domain.py`: provably violated is `parameter_invalid`, undecidable (`0 < p < 1` cannot be an assumption) is a premise
   of the result, never silently true: `statmodel._premise_unestablished_constraints` (every action) turns an unestablished
-  constraint of a parameter the user GAVE (`Condition.role == "given"`) into a premise and the result and its steps into
+  constraint of a parameter the user GAVE (`Condition.role == "given"`, a prior's hyperparameters included, `parameter: "prior:<name>"`; the posterior check samples only inside the prior's parameter space) into a premise and the result and its steps into
   `conditional` (quoted, never `known_latex`; `run_statistical_model` repeats the rule), so a symbolic Normal variance with
   no positivity declared or a symbolic Bernoulli `p` is conditional. The constraint of a parameter being ESTIMATED
   (`role == "estimated"`) is the estimator's admissibility, never a premise about the input (#233). `Numeric` binds parameters through dummies: a parameter named `beta` shadows mpmath's.

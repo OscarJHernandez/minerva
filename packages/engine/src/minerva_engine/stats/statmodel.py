@@ -165,16 +165,17 @@ def _premise_unestablished_constraints(result: StatModelResult, reading: Reading
     """
     if result.status is not Status.OK:
         return
-    for c in reading.conditions:
-        if c.role != "given" or c.established:
-            continue
+    # the model's own parameters, and any the action added (a prior's hyperparameters)
+    unestablished = [
+        c
+        for c in [*reading.conditions, *result.conditions]
+        if c.role == "given" and not c.established
+    ]
+    for c in unestablished:
         premise = f"the parameter space of the model: {c.latex} (not established by the declared assumptions)"
         if premise not in result.premises:
             result.premises.append(premise)
-    if not result.premises:
-        return
-    given = any(c.role == "given" and not c.established for c in reading.conditions)
-    if given:
+    if unestablished:
         result.evidence = "conditional"
         for step in result.steps:
             step.evidence = "conditional"
