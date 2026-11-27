@@ -1201,6 +1201,20 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   score by quadrature (tolerance 1e-9: a 1e-6 error must be rejected). Posteriors are found by kernel matching, never from a
   conjugacy table, and checked against prior x likelihood normalised by quadrature. Do not loosen those tolerances or add a
   hardcoded estimator, information matrix or posterior; `docs/statistics-benchmark.md` and `stat-benchmark` measure them.
+- The bivariate Normal (`stats/mvn.py`, `stats/mvn_models.py`, operation and tool `multivariate_normal`, endpoint
+  `POST /v1/compute/mvn`, `docs/multivariate-normal.md`, issue #229): a mean and covariance of **two** components the
+  user gives (text syntax; nothing defaulted, independence of the components never assumed) and one action (`density`,
+  `moments`, `marginal`, `conditional`, `affine`). The covariance must be exactly symmetric (never symmetrised);
+  positive definiteness is decided by the leading minors: provably false is `not_positive_definite`, a zero determinant
+  is `singular_covariance` (`unsupported`, no pseudoinverse), undecided is an unestablished condition that makes the
+  result conditional; a map A without full row rank is `map_singular`. Results are exact algebra (adjugate inverse,
+  Schur complement, `A Sigma A^T`) shown only if SciPy quadrature of the printed result **read back** agrees with a
+  density built in floating point from the numeric mean and covariance (NumPy inverse and determinant), relative
+  1e-9 with an error estimate ten times smaller (a quadrature that cannot reach it is no agreement), at one point for
+  a numeric model and at least three sampled points otherwise; worded "numerically checked". Three or more components
+  are `dimension_unsupported`: the nested quadrature took minutes per integral in 3-D (measured); do not raise the cap
+  without an independent check that fits the time limit. Wrong twins (dropped off-diagonal term, missing determinant,
+  1e-6 factors, Sigma_11 for the Schur complement, the other variance, `A Sigma A`) are in `tests/test_mvn.py`.
 - Statistical mechanics (`statmech/`, tool `statistical_mechanics`, endpoint `POST /v1/compute/statmech`, docs
   `docs/statistical-mechanics.md`) builds a canonical partition function and derives every thermodynamic quantity by
   one generic route: differentiate ln Z with the other state variables held fixed. Do not add a per-system or

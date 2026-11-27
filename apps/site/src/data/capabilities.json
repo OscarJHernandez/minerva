@@ -10671,6 +10671,182 @@
       ]
     },
     {
+      "id": "bivariate-normal",
+      "title": "The bivariate Normal distribution",
+      "status": "available",
+      "group": "statistics",
+      "where": [
+        "chat",
+        "HTTP API"
+      ],
+      "needs_model": false,
+      "summary": "Give the mean and covariance of a Normal distribution of two components and Minerva writes its density, its moments and correlation, the marginal of one component, the conditional distribution of one component given the other's value (the Schur complement), or the distribution of an affine image A X + b. The covariance must be exactly symmetric and is checked to be positive definite first. Each result is shown only if SciPy quadrature of the printed result agrees with a density built in floating point from the numbers, at sampled values of any symbols: numerically checked, not proved.",
+      "limits": [
+        "Two components only. The independent check is a nested quadrature, and in three dimensions it took minutes per integral.",
+        "A singular covariance, or a map A without full row rank, has no density and is refused; no pseudoinverse is used.",
+        "Symbols whose assumptions do not decide positive definiteness give a result that holds only given it.",
+        "Independence of the components is never assumed; estimation from data and priors are not covered."
+      ],
+      "examples": [
+        {
+          "id": "bivariate-conditional",
+          "title": "X given Y = 1, by the Schur complement",
+          "op": "mvn",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Mean",
+              "source": "1, -2"
+            },
+            {
+              "label": "Covariance",
+              "source": "4, 1; 1, 2"
+            },
+            {
+              "label": "Action",
+              "source": "conditional"
+            },
+            {
+              "label": "Given",
+              "source": "y = 1"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Mean",
+              "latex": "\\begin{pmatrix}\\frac{5}{2}\\end{pmatrix}"
+            },
+            {
+              "label": "Covariance",
+              "latex": "\\begin{pmatrix}\\frac{7}{2}\\end{pmatrix}"
+            },
+            {
+              "label": "Density",
+              "latex": "\\frac{\\sqrt{7} \\mathrm{e}^{- \\frac{\\left(x - \\frac{5}{2}\\right)^{2}}{7}}}{7 \\sqrt{\\pi}}"
+            }
+          ],
+          "checks": [
+            "the printed conditional density against the joint density divided by its integral over the free component (SciPy quadrature), at three values, and its normalisation: 1 of 1"
+          ],
+          "notes": [
+            "numerically checked: SciPy quadrature at sampled parameter values agreed; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "bivariate-affine-image",
+          "title": "The sum and difference of two correlated normals",
+          "op": "mvn",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Mean",
+              "source": "1, -2"
+            },
+            {
+              "label": "Covariance",
+              "source": "4, 1; 1, 2"
+            },
+            {
+              "label": "Action",
+              "source": "affine"
+            },
+            {
+              "label": "Map A X + b",
+              "source": "A = 1, 1; 1, -1, b = 0, 3"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [
+            {
+              "label": "Mean",
+              "latex": "\\begin{pmatrix}-1 \\\\ 6\\end{pmatrix}"
+            },
+            {
+              "label": "Covariance",
+              "latex": "\\begin{pmatrix}8 & 2 \\\\ 2 & 4\\end{pmatrix}"
+            }
+          ],
+          "checks": [
+            "the mean and covariance of A X + b by SciPy quadrature under the original density (built in floating point from the numeric mean and covariance): 1 of 1"
+          ],
+          "notes": [
+            "numerically checked: SciPy quadrature at sampled parameter values agreed; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "bivariate-symbolic-density",
+          "title": "A symbolic covariance holds given its positive definiteness",
+          "op": "mvn",
+          "status": "ok",
+          "input": [
+            {
+              "label": "Mean",
+              "source": "m, 0"
+            },
+            {
+              "label": "Covariance",
+              "source": "s, r; r, s"
+            },
+            {
+              "label": "Action",
+              "source": "density"
+            }
+          ],
+          "assumptions": "m real; s positive; r real",
+          "outputs": [
+            {
+              "label": "Mean",
+              "latex": "\\begin{pmatrix}m \\\\ 0\\end{pmatrix}"
+            },
+            {
+              "label": "Covariance",
+              "latex": "\\begin{pmatrix}s & r \\\\ r & s\\end{pmatrix}"
+            },
+            {
+              "label": "Density",
+              "latex": "\\frac{\\mathrm{e}^{\\frac{- 2 r y \\left(- m + x\\right) + s y^{2} + s \\left(- m + x\\right)^{2}}{2 \\left(r - s\\right) \\left(r + s\\right)}}}{2 \\pi \\sqrt{- \\left(r - s\\right) \\left(r + s\\right)}}"
+            }
+          ],
+          "checks": [
+            "SciPy quadrature of the printed density over the plane: 4 of 4",
+            "SciPy quadrature of the printed density: means and covariances equal the given ones: 4 of 4"
+          ],
+          "notes": [
+            "Holds given: \\det\\Sigma = - \\left(r - s\\right) \\left(r + s\\right) > 0 (not established by the declared assumptions).",
+            "numerically checked: SciPy quadrature at sampled parameter values agreed; numerical agreement is evidence, not a proof"
+          ]
+        },
+        {
+          "id": "bivariate-singular-refused",
+          "title": "A singular covariance has no density",
+          "op": "mvn",
+          "status": "unsupported",
+          "input": [
+            {
+              "label": "Mean",
+              "source": "0, 0"
+            },
+            {
+              "label": "Covariance",
+              "source": "1, 1; 1, 1"
+            },
+            {
+              "label": "Action",
+              "source": "density"
+            }
+          ],
+          "assumptions": null,
+          "outputs": [],
+          "checks": [],
+          "notes": [
+            "Refused (singular_covariance).",
+            "the covariance matrix is singular (its determinant is zero): the distribution has no density, and Minerva does not use a pseudoinverse"
+          ]
+        }
+      ]
+    },
+    {
       "id": "matrix-gradients",
       "title": "Gradients, Jacobians and Hessians of matrix functions",
       "status": "available",

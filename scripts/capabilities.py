@@ -26,6 +26,7 @@ from minerva_engine import (
     ExpectationInput,
     GeometryInput,
     Limits,
+    MvnInput,
     StatMechInput,
     StatModelInput,
     SumsInput,
@@ -2116,6 +2117,61 @@ def run_integrate(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> di
     )
 
 
+def run_mvn(spec: dict[str, Any], engine: Engine, kb: KnowledgeBase) -> dict[str, Any]:
+    del kb
+    r = engine.multivariate_normal(
+        MvnInput(
+            mean=spec["mean"],
+            covariance=spec["covariance"],
+            variables=spec.get("variables"),
+            action=spec["action"],
+            keep=spec.get("keep"),
+            given=spec.get("given"),
+            matrix=spec.get("matrix"),
+            offset=spec.get("offset"),
+            assumptions=spec.get("assumptions") or {},
+        )
+    )
+    inputs = [
+        {"label": "Mean", "source": ", ".join(spec["mean"])},
+        {"label": "Covariance", "source": "; ".join(", ".join(row) for row in spec["covariance"])},
+        {"label": "Action", "source": spec["action"]},
+    ]
+    if spec.get("keep"):
+        inputs.append({"label": "Component kept", "source": spec["keep"]})
+    if spec.get("given"):
+        inputs.append(
+            {"label": "Given", "source": ", ".join(f"{k} = {v}" for k, v in spec["given"].items())}
+        )
+    if spec.get("matrix"):
+        inputs.append(
+            {
+                "label": "Map A X + b",
+                "source": "A = "
+                + "; ".join(", ".join(row) for row in spec["matrix"])
+                + ", b = "
+                + ", ".join(spec["offset"]),
+            }
+        )
+    outputs: list[dict[str, str]] = []
+    checks: list[str] = []
+    notes: list[str] = []
+    if r.status.value == "ok":
+        outputs.append({"label": "Mean", "latex": _matrix_latex([[e] for e in r.mean_latex])})
+        outputs.append({"label": "Covariance", "latex": _matrix_latex(r.covariance_latex)})
+        if r.density_latex:
+            outputs.append({"label": "Density", "latex": r.density_latex})
+        if r.correlation_latex:
+            outputs.append({"label": "Correlation", "latex": r.correlation_latex})
+        checks += [f"{c.method}: {c.points_agreed} of {c.points_checked}" for c in r.checks]
+        if r.premises:
+            notes.append("Holds given: " + "; ".join(r.premises) + ".")
+    elif r.reason:
+        notes.append(f"Refused ({r.reason}).")
+    notes.append(r.message)
+    return _example(spec, r.status.value, inputs, outputs, checks, notes)
+
+
 RUNNERS = {
     "ode_analyze": run_ode_analyze,
     "ode_solve": run_ode_solve,
@@ -2131,6 +2187,7 @@ RUNNERS = {
     "sums": run_sums,
     "expectation": run_expectation,
     "statistics": run_statistics,
+    "mvn": run_mvn,
     "geometry": run_geometry,
     "vector": run_vector,
     "electromagnetism": run_electromagnetism,

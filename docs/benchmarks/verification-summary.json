@@ -149,6 +149,19 @@
       },
       {
         "source": "reference",
+        "domain": "statistics",
+        "problems": 6,
+        "correct": 4,
+        "refused_as_expected": 2,
+        "false_accepts": 0,
+        "incorrect_accepted": 0,
+        "false_rejects": 0,
+        "pending": 0,
+        "known_open": 0,
+        "counterexamples": 0
+      },
+      {
+        "source": "reference",
         "domain": "statmech",
         "problems": 5,
         "correct": 3,
@@ -318,9 +331,9 @@
       }
     ],
     "totals": {
-      "problems": 251,
-      "correct": 141,
-      "refused_as_expected": 107,
+      "problems": 257,
+      "correct": 145,
+      "refused_as_expected": 109,
       "false_accepts": 0,
       "incorrect_accepted": 0,
       "false_rejects": 0,
@@ -330,10 +343,10 @@
     },
     "evidence_of_accepted_reference_results": {
       "symbolic_proof": 8,
-      "numeric_agreement": 54,
+      "numeric_agreement": 58,
       "structural": 9,
       "conditional": 3,
-      "refusal": 32,
+      "refusal": 34,
       "unrecorded": 0
     },
     "counterexamples_by_probe": {
@@ -367,10 +380,10 @@
     }
   },
   "measurements": {
-    "adversarial_total_s": 1.38,
-    "adversarial_median_ms": 12.2,
-    "adversarial_max_ms": 110.5,
-    "report_wall_s": 12.72,
-    "peak_rss_mb": 199.4
+    "adversarial_total_s": 1.4,
+    "adversarial_median_ms": 12.4,
+    "adversarial_max_ms": 111.2,
+    "report_wall_s": 3.88,
+    "peak_rss_mb": 200.1
   }
 }
