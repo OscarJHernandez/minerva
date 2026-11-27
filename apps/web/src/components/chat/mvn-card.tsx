@@ -135,7 +135,8 @@ export function MvnCard({
 
       {shown && (
         <div className="mt-3 space-y-1" data-testid="distribution">
-          <div className="text-xs uppercase tracking-wide text-muted">
+          {/* not uppercase: the component names are case-sensitive (x is not X) */}
+          <div className="text-xs text-muted">
             {result.action === "density" || result.action === "moments"
               ? `Distribution of (${names})`
               : result.action === "conditional" && given
