@@ -172,6 +172,10 @@ def _grid(rows: list[list[str]]) -> str:
     return json.dumps(rows, ensure_ascii=False)
 
 
+def _pmatrix(rows: list[list[str]]) -> str:
+    return "\\begin{pmatrix}" + " \\\\ ".join(" & ".join(r) for r in rows) + "\\end{pmatrix}"
+
+
 def _distribution_lines(result: MvnResult) -> list[str]:
     names = ", ".join(result.variables)
     lines = [f"distribution of ({names}):"]
@@ -220,9 +224,11 @@ def run_multivariate_normal(args: MvnArgs, ctx: ToolContext) -> ToolOutput:
     if status == "ok":
         head += f"; evidence={'conditional' if conditional else result.evidence}"
         lines.extend(_distribution_lines(result))
+        # Whole formulas only: a bare entry (`4`, `-2`) would mark every such number in the reply as a
+        # tool result, whatever it was about.
         formulas = [
-            *result.mean_latex,
-            *(c for row in result.covariance_latex for c in row),
+            _pmatrix([[m] for m in result.mean_latex]),
+            _pmatrix(result.covariance_latex),
             result.density_latex,
             result.correlation_latex,
         ]

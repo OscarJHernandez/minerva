@@ -78,6 +78,9 @@ def test_a_numeric_model_is_verified_and_its_formulas_are_known(ctx: ToolContext
     assert out.status == "ok" and out.card.type == "multivariate_normal"
     assert out.evidence is not None and out.evidence.accepted and out.evidence.check == "numeric"
     assert out.known_latex and not out.quoted_latex
+    # whole formulas only: a bare entry such as `4` would mark every 4 in the reply as a tool result
+    assert all(len(f) > 4 for f in out.known_latex), out.known_latex
+    assert any(f.startswith("\\begin{pmatrix}") for f in out.known_latex)
     assert "numerically checked" in out.for_model and "not proved" in out.for_model
     assert "HOLDS GIVEN" not in out.for_model and "assumed" not in out.for_model
     assert (

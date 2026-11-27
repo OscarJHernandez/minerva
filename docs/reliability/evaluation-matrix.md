@@ -92,6 +92,7 @@ engine. "Oracle" is the independent check named in `AGENTS.md`.
 | `tensor_canonicalize` | geometry | 2 / 2 | monoterm symmetries only | multi-term identities out of scope | reference case |
 | `statistical_mechanics` | statmech | 9 / 9 | enumeration and quadrature oracle | conventions are the user's | `statmech/benchmark.py` |
 | `expectation` | statistics | 1 / 1 | explicit finite joint distributions | one independence group | reference case |
+| `multivariate_normal` | statistics | 1 / 1 | SciPy quadrature of the printed density, moments, marginal, conditional and affine image | the user's mean and 2 x 2 covariance only (a zero off-diagonal entry is the user's claim); exact symmetry and positive definiteness checked first | reliability cases `bivariate-normal-density-marginal-conditional`, `bivariate-normal-covariance-missing-is-asked` |
 | `statistical_model` | statistics | 2 / 2 | quadrature, direct log-likelihood scores | independence never assumed | `stat-benchmark` |
 | `sums` | statistics | none | explicit instances at several sizes | no reference call (`corruption.EXEMPT`); not proved for every n | adversarial corpus |
 | `distribution` | distributions | 3 / 2 | test-function pairing | notation confirmed by the user | pairing tests (1e-6 error) |
