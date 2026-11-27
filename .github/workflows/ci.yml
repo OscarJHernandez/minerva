@@ -178,7 +178,7 @@ jobs:
       # No package-manager cache: pods are ephemeral, and setup-node v5 would otherwise look for pnpm before it is installed.
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           package-manager-cache: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - run: pnpm install --frozen-lockfile
@@ -210,7 +210,7 @@ jobs:
       - run: uv sync --frozen
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           package-manager-cache: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - run: pnpm install --frozen-lockfile
@@ -355,7 +355,7 @@ jobs:
       - if: ${{ needs.changes.outputs.deps == 'true' }}
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           package-manager-cache: false
       - if: ${{ needs.changes.outputs.deps == 'true' }}
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1

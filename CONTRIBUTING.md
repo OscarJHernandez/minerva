@@ -5,7 +5,7 @@ Small, reviewable pull requests with tests are preferred over large ones.
 
 ## Setup
 
-See the README for `uv sync`, `pnpm install` and the commands to run tests. Python 3.13 and Node 20.19+.
+See the README for `uv sync`, `pnpm install` and the commands to run tests. Python 3.13 and Node 24 LTS (24.15 or later; `.nvmrc` pins it, so `nvm use` or `fnm use` picks it).
 
 ## Before you open a pull request
 

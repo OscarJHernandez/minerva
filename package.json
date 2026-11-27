@@ -4,7 +4,7 @@
   "description": "Minerva monorepo root (JavaScript workspace). Python lives in a uv workspace, see pyproject.toml.",
   "license": "Apache-2.0",
   "engines": {
-    "node": ">=20.19"
+    "node": ">=24.15"
   },
   "scripts": {
     "lint": "pnpm -r --if-present lint",
