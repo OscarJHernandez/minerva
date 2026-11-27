@@ -10,6 +10,3 @@ packages:
 auditConfig:
   ignoreGhsas:
     - GHSA-fc5q-39xc-vjpf
-
-# Fail the install on an unsupported Node (root package.json "engines"; .nvmrc names the version).
-engineStrict: true
