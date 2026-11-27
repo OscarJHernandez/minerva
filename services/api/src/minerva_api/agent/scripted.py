@@ -230,6 +230,26 @@ class ScriptedLLM:
             async for c in self._say("I will compute that and check it independently. "):
                 yield c
             yield Chunk(tool_calls=[ToolCall("vector_calculus", vector_args)])
+        elif "moments" in lower and "normal" in lower and "variance" in lower:
+            # Development stand-in: the moments of a Normal with variance v, with no assumption on v
+            # (its constraint is then a premise of the result, never silently true).
+            async for c in self._say(
+                "I will derive the moments and check them against the density. "
+            ):
+                yield c
+            yield Chunk(
+                tool_calls=[
+                    ToolCall(
+                        "statistical_model",
+                        {
+                            "family": "normal",
+                            "parametrization": "variance",
+                            "parameters": {"mu": "0", "v": "v"},
+                            "action": "moments",
+                        },
+                    )
+                ]
+            )
         elif "maximum likelihood" in lower or "mle" in lower.split() or "estimator" in lower:
             # Development stand-in: independence must be stated by the user, as a real model must ask.
             independent = any(w in lower for w in ("independent", "i.i.d", "iid"))
@@ -1019,7 +1039,8 @@ class ScriptedLLM:
             if status == "ok" and "HOLDS GIVEN" in content:
                 text = (
                     "The card shows the derivation and its checks. The result holds **given** the "
-                    "independence you stated: Minerva did not check that it is true."
+                    "premises the card lists (for example the independence you stated): Minerva "
+                    "did not check that they are true."
                 )
             elif status == "ok":
                 text = (

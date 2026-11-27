@@ -103,6 +103,11 @@ class Condition(BaseModel):
     latex: str
     established: bool
     how: str
+    # Statistical models only: which parameter the condition constrains and whether the user gave it
+    # ("given") or asked for it to be estimated ("estimated"). None for every other operation and for
+    # cards stored before this existed.
+    parameter: str | None = None
+    role: Literal["given", "estimated"] | None = None
 
 
 class DistributionStep(BaseModel):

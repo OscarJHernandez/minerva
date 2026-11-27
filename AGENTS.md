@@ -1175,7 +1175,11 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   convergence is established first** (`Numeric.absolute_moment_exists`: the tails of |x|^k f must shrink), because quadrature
   "agrees" with a divergent integral; such a moment is `convergence_not_established`. Parameter constraints are decided by
   `stats/domain.py`: provably violated is `parameter_invalid`, undecidable (`0 < p < 1` cannot be an assumption) is a premise
-  of the result, never silently true. `Numeric` binds parameters through dummies: a parameter named `beta` shadows mpmath's.
+  of the result, never silently true: `statmodel._premise_unestablished_constraints` (every action) turns an unestablished
+  constraint of a parameter the user GAVE (`Condition.role == "given"`) into a premise and the result and its steps into
+  `conditional` (quoted, never `known_latex`; `run_statistical_model` repeats the rule), so a symbolic Normal variance with
+  no positivity declared or a symbolic Bernoulli `p` is conditional. The constraint of a parameter being ESTIMATED
+  (`role == "estimated"`) is the estimator's admissibility, never a premise about the input (#233). `Numeric` binds parameters through dummies: a parameter named `beta` shadows mpmath's.
 - Statistical derivations (`stats/likelihood.py`, `mle.py`, `fisher.py`, `posterior.py`; operation `statistical_model`):
   **independence is never assumed** (`iid` must be stated, else `independence_not_declared`, and a result that used it is
   `conditional`); a prior is an assumption of the result and the result says so. Estimators are derived by solving the score

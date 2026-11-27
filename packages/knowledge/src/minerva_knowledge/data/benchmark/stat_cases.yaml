@@ -411,6 +411,7 @@
   request: {family: normal, parameters: {mu: mu, sigma: sigma}, action: moments}
   expect:
     outputs: {"moment:mean": "mu", "moment:variance": "sigma**2", "moment:second": "mu**2 + sigma**2"}
+    evidence: identity
 
 - id: family-bernoulli-moments
   group: families
@@ -422,6 +423,7 @@
   request: {family: bernoulli, parameters: {p: p}, action: moments}
   expect:
     outputs: {"moment:mean": "p", "moment:variance": "p*(1 - p)"}
+    evidence: conditional  # p < 1 cannot be declared: the constraint is a premise (#233)
 
 - id: family-binomial-moments
   group: families
@@ -433,6 +435,7 @@
   request: {family: binomial, parameters: {n: n, p: p}, action: moments}
   expect:
     outputs: {"moment:mean": "n*p", "moment:variance": "n*p*(1 - p)"}
+    evidence: conditional  # p < 1 cannot be declared: the constraint is a premise (#233)
 
 - id: family-poisson-moments
   group: families

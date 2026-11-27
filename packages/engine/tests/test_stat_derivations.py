@@ -425,3 +425,43 @@ def test_an_invalid_prior_is_refused(engine) -> None:
         observation="k",
     )
     assert (r.status, r.reason) == (Status.CONDITIONS_NOT_SATISFIED, "parameter_invalid")
+
+
+# ---------------------------------------------------------------- unestablished constraints (#233)
+
+
+def _moments(engine, family, parameters, assumptions=None, **kw):
+    return engine.statistical_model(
+        StatModelInput(
+            family=family,
+            parameters=parameters,
+            action="moments",
+            assumptions=assumptions or {},
+            **kw,
+        )
+    )
+
+
+def test_an_unestablished_constraint_of_a_given_parameter_is_a_premise(engine) -> None:
+    kw = {"parametrization": "variance"}
+    open_ = _moments(engine, "normal", {"mu": "0", "v": "v"}, **kw)
+    assert open_.status is Status.OK and open_.evidence == "conditional"
+    assert any("v > 0" in p for p in open_.premises)
+    assert all(s.evidence == "conditional" for s in open_.steps)
+    declared = _moments(engine, "normal", {"mu": "0", "v": "v"}, {"v": ["positive"]}, **kw)
+    assert declared.evidence == "identity" and not declared.premises
+    bad = _moments(engine, "normal", {"mu": "0", "v": "-1"}, **kw)
+    assert bad.status is Status.CONDITIONS_NOT_SATISFIED and bad.reason == "parameter_invalid"
+
+
+def test_a_symbolic_bernoulli_p_is_conditional_and_a_number_is_not(engine) -> None:
+    assert _moments(engine, "bernoulli", {"p": "p"}).evidence == "conditional"
+    assert _moments(engine, "bernoulli", {"p": "1/3"}).evidence == "identity"
+
+
+def test_the_constraint_of_an_estimated_parameter_is_not_a_premise(engine) -> None:
+    result = mle(
+        engine, "bernoulli", ["p"], assumptions={"n": ["integer", "positive"], "x": ["real"]}
+    )
+    assert not any("parameter space" in p for p in result.premises)
+    assert {c.role for c in result.conditions if c.parameter == "p"} == {"estimated"}
