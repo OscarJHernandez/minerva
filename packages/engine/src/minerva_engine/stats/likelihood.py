@@ -19,8 +19,7 @@ import sympy as sp
 
 from ..indexed.instantiate import explicit
 from ..indexed.rewrite import expand_sums
-from ..models import ALLOWED_ASSUMPTIONS, ExpressionInput, Limits, Status
-from ..ops import parse_expression
+from ..models import ALLOWED_ASSUMPTIONS, Limits, Status
 from .families import Family
 from .statmodel_types import Reading, Refusal
 
@@ -58,41 +57,26 @@ def _flags(family: Family, user: list[str] | None) -> dict[str, bool]:
     return flags
 
 
-def observation_setup(data: object, family: Family, limits: Limits) -> Observations:
+def observation_setup(data: object, reading: Reading) -> Observations:
     from .models import StatModelInput
 
     assert isinstance(data, StatModelInput)  # noqa: S101 - narrowing
+    family = reading.family
     name = data.observation or "x"
     flags = _flags(family, data.assumptions.get(name))
-    if data.data is not None:
-        values = []
-        for text in data.data:
-            value = parse_expression(ExpressionInput(input=text, format="text"), limits)
-            if value.free_symbols or not value.is_real:
-                raise Refusal(
-                    Status.PARSE_ERROR, "parse_error", "observations must be real numbers"
-                )
-            values.append(sp.nsimplify(value))
-        count = len(values)
-        i = sp.Symbol(INDEX_NAMES[0], integer=True, positive=True)
-        return Observations(
-            name, sp.IndexedBase(name, **flags), sp.Integer(count), i, values, flags
-        )
-    if data.sample_size is None:
+    count = reading.count
+    assert count is not None  # noqa: S101 - read_model fills it for every action but moments
+    n = count.n
+    if n is None:
         return Observations(name, sp.Symbol(name, **flags), None, None, None, flags)
-    n_flags = {"integer": True, "positive": True}
-    for item in data.assumptions.get(data.sample_size, []):
-        if item in ALLOWED_ASSUMPTIONS:
-            n_flags[item] = True
-    n = sp.Symbol(data.sample_size, **n_flags)
-    used = {name, data.sample_size}
+    used = {name, *(s.name for s in n.free_symbols)}
     index_name = next((c for c in INDEX_NAMES if c not in used), "k")
     return Observations(
         name,
         sp.IndexedBase(name, **flags),
         n,
         sp.Symbol(index_name, integer=True, positive=True),
-        None,
+        count.values,
         flags,
     )
 
@@ -101,10 +85,10 @@ def build(data: object, reading: Reading, limits: Limits) -> Likelihood:
     from .models import StatModelInput
 
     assert isinstance(data, StatModelInput)  # noqa: S101 - narrowing
-    obs = observation_setup(data, reading.family, limits)
+    obs = observation_setup(data, reading)
     several = obs.n is not None
     premises: list[str] = []
-    if several:
+    if several and obs.n != 1:
         if data.iid is not True:
             raise Refusal(
                 Status.CONDITIONS_NOT_SATISFIED,

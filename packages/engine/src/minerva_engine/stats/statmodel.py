@@ -30,6 +30,7 @@ from .models import (
     StatStep,
 )
 from .numeric import DPS, REL_TOL, Numeric, sample_parameters
+from .observations import read_count
 from .statmodel_types import Reading, Refusal
 
 MOMENT_KEYS = ("mean", "variance", "second")
@@ -113,7 +114,11 @@ def read_model(data: StatModelInput, limits: Limits) -> Reading:
                 role="estimated" if p.name in data.estimate else "given",
             )
         )
-    return Reading(family, params, exprs, conditions)
+    reading = Reading(family, params, exprs, conditions)
+    if data.action != "moments":
+        # the one validated reader of the count and the data, before any computation
+        reading.count = read_count(data, reading, limits)
+    return reading
 
 
 def stat_model(data: StatModelInput, limits: Limits) -> StatModelResult:

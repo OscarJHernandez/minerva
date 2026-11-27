@@ -31,6 +31,7 @@ from .domain import DESCRIPTIONS, decide
 from .families import FAMILIES, Family
 from .models import PosteriorOut, StatCheck, StatModelInput, StatModelResult, StatStep
 from .numeric import DPS, sample_symbol
+from .observations import fits_at
 from .statmodel_types import Reading, Refusal
 
 TOL = mp.mpf(10) ** -8
@@ -420,6 +421,8 @@ def _data(
         if decide(p.constraint, sp.nsimplify(reading.exprs[p.name].subs(point))) is not True:
             return None
     if obs.values is not None:
+        if not fits_at(obs.values, reading, point):
+            return None
         return {}, list(obs.values)
     if obs.n is None:  # a single observation (a count of successes in n trials, say)
         if family.id == "binomial":

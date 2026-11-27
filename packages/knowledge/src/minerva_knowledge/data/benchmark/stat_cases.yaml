@@ -1305,3 +1305,103 @@
   request: {action: gradient, variable: mu}
   candidate: {result: "1000001/1000000*inv(S)*(x - mu)"}
   control: {result: "inv(S)*(x - mu)"}
+
+- id: mle-bernoulli-fractional-data-is-outside-the-support
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "A Bernoulli observation is 0 or 1 (support {0, 1})"
+  assumptions: {}
+  vars: {}
+  request: {family: bernoulli, parameters: {}, observation: x, iid: true, estimate: [p], action: mle, data: ["1/5", "4/5"]}
+  expect: {status: conditions_not_satisfied, reason: observation_outside_support}
+
+- id: mle-poisson-fractional-data-is-outside-the-support
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "A Poisson observation is a nonnegative integer"
+  assumptions: {}
+  vars: {}
+  request: {family: poisson, parameters: {}, observation: x, iid: true, estimate: [lam], action: mle, data: ["1/2", "3/2"]}
+  expect: {status: conditions_not_satisfied, reason: observation_outside_support}
+
+- id: mle-beta-endpoint-is-outside-the-open-interval
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "The Beta density lives on the open interval (0, 1): an observation 1 is outside"
+  assumptions: {}
+  vars: {}
+  request: {family: beta, parameters: {beta: "2"}, observation: x, iid: true, estimate: [alpha], action: log_likelihood, data: ["1/4", "1"]}
+  expect: {status: conditions_not_satisfied, reason: observation_outside_support}
+
+- id: mle-binomial-count-above-n-is-outside-the-support
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "A Binomial(5, p) count is an integer from 0 to 5"
+  assumptions: {}
+  vars: {}
+  request: {family: binomial, parameters: {n: "5"}, observation: x, iid: true, estimate: [p], action: mle, data: ["6", "1"]}
+  expect: {status: conditions_not_satisfied, reason: observation_outside_support}
+
+- id: mle-negative-sample-size
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "A number of observations is a whole number of at least 1"
+  assumptions: {}
+  vars: {}
+  request: {family: normal, parameters: {sigma: "1"}, observation: x, sample_size: "-1", iid: true, estimate: [mu], action: mle}
+  expect: {status: parse_error, reason: sample_size_invalid}
+
+- id: mle-empty-data
+  group: mle
+  kind: unsupported
+  operation: statistical_model
+  source: "A sample has at least one observation"
+  assumptions: {}
+  vars: {}
+  request: {family: normal, parameters: {sigma: "1"}, observation: x, iid: true, estimate: [mu], action: mle, data: []}
+  expect: {status: conditions_not_satisfied, reason: no_observations}
+
+- id: fisher-negative-sample-size
+  group: fisher
+  kind: unsupported
+  operation: statistical_model
+  source: "A number of observations is a whole number of at least 1"
+  assumptions: {}
+  vars: {}
+  request: {family: normal, parameters: {sigma: "1"}, estimate: [mu], sample_size: "-1", iid: true, action: fisher_information}
+  expect: {status: parse_error, reason: sample_size_invalid}
+
+- id: fisher-fractional-sample-size
+  group: fisher
+  kind: unsupported
+  operation: statistical_model
+  source: "A number of observations is a whole number"
+  assumptions: {}
+  vars: {}
+  request: {family: normal, parameters: {sigma: "1"}, estimate: [mu], sample_size: "1/2", iid: true, action: fisher_information}
+  expect: {status: parse_error, reason: sample_size_invalid}
+
+- id: fisher-sample-size-disagrees-with-the-data
+  group: fisher
+  kind: unsupported
+  operation: statistical_model
+  source: "Four observations were stated but two were given: the data determine the count"
+  assumptions: {}
+  vars: {}
+  request: {family: normal, parameters: {sigma: "1"}, estimate: [mu], sample_size: "4", data: ["1", "2"], iid: true, action: fisher_information}
+  expect: {status: conditions_not_satisfied, reason: sample_size_conflict}
+
+- id: fisher-several-observations-need-independence
+  group: fisher
+  kind: unsupported
+  operation: statistical_model
+  source: "The information of four observations is four times that of one only under independence"
+  assumptions: {}
+  vars: {}
+  request: {family: normal, parameters: {sigma: "1"}, estimate: [mu], data: ["1", "2", "3", "4"], action: fisher_information}
+  expect: {status: conditions_not_satisfied, reason: independence_not_declared}
