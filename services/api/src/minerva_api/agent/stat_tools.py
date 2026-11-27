@@ -288,9 +288,17 @@ def run_statistical_model(args: StatModelArgs, ctx: ToolContext) -> ToolOutput:
     head = f"status={result.status.value}; action={result.action}; family={args.family}"
     lines: list[str] = []
     formulas: list[str] = []
-    conditional = result.evidence == "conditional"
+    # A given parameter whose constraint the declarations cannot establish makes the result hold only
+    # given it (the engine says so too; the tool does not depend on that alone).
+    unestablished = [c.latex for c in result.conditions if c.role == "given" and not c.established]
+    premises = list(result.premises)
+    for latex in unestablished:
+        text = f"the parameter space of the model: {latex} (not established by the declared assumptions)"
+        if text not in premises:
+            premises.append(text)
+    conditional = result.evidence == "conditional" or bool(unestablished)
     if result.status.value == "ok":
-        head += f"; evidence={result.evidence}"
+        head += f"; evidence={'conditional' if conditional else result.evidence}"
         for name, text in result.moments.items():
             lines.append(f"- {name} = ${result.moments_latex.get(name, text)}$")
             formulas.append(result.moments_latex.get(name, ""))
@@ -318,11 +326,9 @@ def run_statistical_model(args: StatModelArgs, ctx: ToolContext) -> ToolOutput:
             formulas.extend(result.posterior.parameters_latex.values())
         lines.extend(_lines_for_checks(result))
         lines.extend(_conditions(result))
-        if result.premises:
+        if premises:
             head += (
-                "; the result HOLDS GIVEN: "
-                + "; ".join(result.premises)
-                + ". Minerva did not check "
+                "; the result HOLDS GIVEN: " + "; ".join(premises) + ". Minerva did not check "
                 "these: say 'given', never 'proved'"
             )
         lines.append(result.message)
@@ -333,9 +339,7 @@ def run_statistical_model(args: StatModelArgs, ctx: ToolContext) -> ToolOutput:
         if result.reason == "candidate_inadmissible":
             head += ". Do not invent an estimate; explain that no maximum-likelihood estimate exists for these data"
     formulas.extend(s.after_latex for s in result.steps)
-    known, quoted = _known_and_quoted(
-        formulas, conditional or bool(result.premises), result.premises
-    )
+    known, quoted = _known_and_quoted(formulas, conditional or bool(premises), premises)
     return ToolOutput(
         card, "\n".join([head, *lines]), known, result.status.value, quoted_latex=quoted
     )

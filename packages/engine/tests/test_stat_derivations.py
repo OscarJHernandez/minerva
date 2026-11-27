@@ -425,3 +425,90 @@ def test_an_invalid_prior_is_refused(engine) -> None:
         observation="k",
     )
     assert (r.status, r.reason) == (Status.CONDITIONS_NOT_SATISFIED, "parameter_invalid")
+
+
+# ---------------------------------------------------------------- unestablished constraints (#233)
+
+
+def _moments(engine, family, parameters, assumptions=None, **kw):
+    return engine.statistical_model(
+        StatModelInput(
+            family=family,
+            parameters=parameters,
+            action="moments",
+            assumptions=assumptions or {},
+            **kw,
+        )
+    )
+
+
+def test_an_unestablished_constraint_of_a_given_parameter_is_a_premise(engine) -> None:
+    kw = {"parametrization": "variance"}
+    open_ = _moments(engine, "normal", {"mu": "0", "v": "v"}, **kw)
+    assert open_.status is Status.OK and open_.evidence == "conditional"
+    assert any("v > 0" in p for p in open_.premises)
+    assert all(s.evidence == "conditional" for s in open_.steps)
+    declared = _moments(engine, "normal", {"mu": "0", "v": "v"}, {"v": ["positive"]}, **kw)
+    assert declared.evidence == "identity" and not declared.premises
+    bad = _moments(engine, "normal", {"mu": "0", "v": "-1"}, **kw)
+    assert bad.status is Status.CONDITIONS_NOT_SATISFIED and bad.reason == "parameter_invalid"
+
+
+def test_a_symbolic_bernoulli_p_is_conditional_and_a_number_is_not(engine) -> None:
+    assert _moments(engine, "bernoulli", {"p": "p"}).evidence == "conditional"
+    assert _moments(engine, "bernoulli", {"p": "1/3"}).evidence == "identity"
+
+
+def test_the_constraint_of_an_estimated_parameter_is_not_a_premise(engine) -> None:
+    result = mle(
+        engine, "bernoulli", ["p"], assumptions={"n": ["integer", "positive"], "x": ["real"]}
+    )
+    assert not any("parameter space" in p for p in result.premises)
+    assert {c.role for c in result.conditions if c.parameter == "p"} == {"estimated"}
+
+
+def _undeclared_prior(engine, **kw):
+    """A Bernoulli posterior whose Beta hyperparameters are undeclared symbols (used to crash)."""
+    return engine.statistical_model(
+        StatModelInput(
+            family="bernoulli",
+            estimate=["p"],
+            observation="x",
+            action="posterior",
+            prior={"family": "beta", "parameters": {"alpha": "a", "beta": "b"}},
+            # declared like the family's observation, so a candidate's x is the same symbol
+            assumptions={"x": ["integer", "nonnegative"]},
+            **kw,
+        )
+    )
+
+
+def test_an_undeclared_prior_hyperparameter_is_a_premise(engine) -> None:
+    r = _undeclared_prior(engine)
+    assert r.status is Status.OK and r.evidence == "conditional"
+    assert any("a > 0" in p for p in r.premises) and any("b > 0" in p for p in r.premises)
+    assert all(s.evidence == "conditional" for s in r.steps)
+    assert all(c.passed for c in r.checks)
+    hyper = {c.parameter: c for c in r.conditions if (c.parameter or "").startswith("prior:")}
+    assert set(hyper) == {"prior:alpha", "prior:beta"}
+    assert not any(c.established for c in hyper.values())
+
+
+@pytest.mark.parametrize(
+    "wrong",
+    [
+        {"posterior:alpha": "a", "posterior:beta": "b"},  # not updated
+        {"posterior:alpha": "a + x", "posterior:beta": "b + x"},  # wrong failure count
+        {"posterior:alpha": "a + x", "posterior:beta": "b - x + 1 + 1/1000000"},
+    ],
+)
+def test_wrong_posteriors_with_undeclared_hyperparameters_are_rejected(engine, wrong) -> None:
+    r = _undeclared_prior(engine, candidate=wrong)
+    assert r.status is Status.NOT_VERIFIED and r.posterior is None
+
+
+def test_the_right_posterior_with_undeclared_hyperparameters_is_accepted(engine) -> None:
+    r = _undeclared_prior(
+        engine, candidate={"posterior:alpha": "a + x", "posterior:beta": "b - x + 1"}
+    )
+    assert r.status is Status.OK and r.evidence == "conditional"

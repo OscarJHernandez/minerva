@@ -109,6 +109,8 @@ def read_model(data: StatModelInput, limits: Limits) -> Reading:
                 how="from the declared assumptions"
                 if verdict is True
                 else "part of the parameter space of the model; the declarations cannot express it",
+                parameter=p.name,
+                role="estimated" if p.name in data.estimate else "given",
             )
         )
     return Reading(family, params, exprs, conditions)
@@ -147,8 +149,36 @@ def stat_model(data: StatModelInput, limits: Limits) -> StatModelResult:
         return _fail(data, Status.PARSE_ERROR, "parse_error", str(exc), started)
     except MinervaMathError as exc:
         return _fail(data, Status.PARSE_ERROR, "parse_error", str(exc), started)
+    _premise_unestablished_constraints(result, reading)
     result.duration_ms = (time.monotonic() - started) * 1000
     return result
+
+
+def _premise_unestablished_constraints(result: StatModelResult, reading: Reading) -> None:
+    """A parameter the user GAVE whose constraint the declarations cannot establish is a premise.
+
+    `v > 0` for a variance `v` left undeclared is part of the parameter space, not something the
+    engine proved: every formula then holds only given it (conditional, never marked verified). The
+    constraint of a parameter being ESTIMATED is not a premise about the input: it is the
+    estimator's admissibility (`admissible_if`, `candidate_inadmissible`). Done once here, for every
+    action, so none can forget it.
+    """
+    if result.status is not Status.OK:
+        return
+    # the model's own parameters, and any the action added (a prior's hyperparameters)
+    unestablished = [
+        c
+        for c in [*reading.conditions, *result.conditions]
+        if c.role == "given" and not c.established
+    ]
+    for c in unestablished:
+        premise = f"the parameter space of the model: {c.latex} (not established by the declared assumptions)"
+        if premise not in result.premises:
+            result.premises.append(premise)
+    if unestablished:
+        result.evidence = "conditional"
+        for step in result.steps:
+            step.evidence = "conditional"
 
 
 # ---------------------------------------------------------------------------------- moments
