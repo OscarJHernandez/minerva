@@ -150,6 +150,7 @@ function CardContent({ card }: { card: Card }) {
           result={card.data.result}
           provenance={card.data.provenance}
           headingId={`mvn-${card.id}`}
+          given={card.data.request.given as Record<string, string> | undefined}
         />
       );
     case "geometry":

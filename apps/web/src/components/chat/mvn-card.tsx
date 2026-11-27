@@ -57,10 +57,13 @@ function checkText(c: MvnResult["checks"][number]): string {
 export function MvnCard({
   result,
   provenance,
+  given,
   headingId = "mvn-heading",
 }: {
   result: MvnResult;
   provenance?: MvnProvenance;
+  /** conditional only: the component fixed and its value, as the request stated them */
+  given?: Record<string, string>;
   headingId?: string;
 }) {
   const shown = result.status === "ok";
@@ -135,7 +138,11 @@ export function MvnCard({
           <div className="text-xs uppercase tracking-wide text-muted">
             {result.action === "density" || result.action === "moments"
               ? `Distribution of (${names})`
-              : `Distribution of ${names}`}
+              : result.action === "conditional" && given
+                ? `Distribution of ${names} given ${Object.entries(given)
+                    .map(([k, v]) => `${k} = ${v}`)
+                    .join(", ")}`
+                : `Distribution of ${names}`}
           </div>
           <div className="overflow-x-auto">
             <Formula latex={`\\mu = ${column(result.mean_latex)}`} display label="Mean" />
