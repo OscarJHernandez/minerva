@@ -272,6 +272,66 @@
       "outcome": "correct"
     },
     {
+      "id": "mvn-marginal-of-y",
+      "category": "statistics",
+      "source": "Anderson, Multivariate Statistical Analysis, Thm 2.4.3 (marginal of a normal vector)",
+      "expected": "correct",
+      "oracle": "closed_form",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "mvn-conditional-x-given-y",
+      "category": "statistics",
+      "source": "Anderson, Multivariate Statistical Analysis, Thm 2.5.1 (mean 1 + (1/2)(1 + 2), variance 4 - 1/2)",
+      "expected": "correct",
+      "oracle": "closed_form",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "mvn-affine-sum-and-difference",
+      "category": "statistics",
+      "source": "Anderson, Multivariate Statistical Analysis, Thm 2.4.4 (A mu + b, A Sigma A^T by hand)",
+      "expected": "correct",
+      "oracle": "closed_form",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "mvn-affine-one-row",
+      "category": "statistics",
+      "source": "Anderson, Multivariate Statistical Analysis, Thm 2.4.4 (2 X - Y + 5: mean 9, variance 16 - 4 + 2)",
+      "expected": "correct",
+      "oracle": "closed_form",
+      "evidence": "numeric_agreement",
+      "tier": "pr",
+      "outcome": "correct"
+    },
+    {
+      "id": "mvn-singular-covariance-refused",
+      "category": "statistics",
+      "source": "a covariance of determinant zero has no density (Anderson, section 2.4, singular case)",
+      "expected": "refused",
+      "oracle": "closed_form",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
+      "id": "mvn-indefinite-covariance-refused",
+      "category": "statistics",
+      "source": "a covariance matrix is positive semidefinite: det [[1, 2], [2, 1]] = -3",
+      "expected": "refused",
+      "oracle": "closed_form",
+      "evidence": "refusal",
+      "tier": "pr",
+      "outcome": "refused_as_expected"
+    },
+    {
       "id": "integral-beta-function",
       "category": "calculus",
       "source": "DLMF \u00a75.12 (the beta integral)",

@@ -1,5 +1,5 @@
 {
-  "applied": 1016,
+  "applied": 1022,
   "by_operator": {
     "derivative:joined": {
       "diagnosed": 0,
@@ -54,7 +54,7 @@
       "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 95,
+      "same_after_cleaning": 98,
       "untyped_failure": 0
     },
     "shape:kind_wrapped": {
@@ -68,7 +68,7 @@
       "diagnosed": 2,
       "different_verified_result": 0,
       "same": 0,
-      "same_after_cleaning": 39,
+      "same_after_cleaning": 42,
       "untyped_failure": 0
     },
     "shape:number_as_string": {
@@ -255,6 +255,13 @@
       "same_after_cleaning": 38,
       "untyped_failure": 0
     },
+    "multivariate_normal": {
+      "diagnosed": 0,
+      "different_verified_result": 0,
+      "same": 0,
+      "same_after_cleaning": 6,
+      "untyped_failure": 0
+    },
     "ode_analyze": {
       "diagnosed": 0,
       "different_verified_result": 0,
@@ -372,34 +379,34 @@
   "format": 1,
   "mode": "pr",
   "not_applicable": {
-    "derivative:joined": 166,
-    "derivative:latex_letter_run": 159,
-    "derivative:leibniz": 166,
-    "derivative:spaced": 166,
-    "derivative:upper": 166,
-    "shape:assignment_prefix": 149,
-    "shape:formula_alias": 64,
+    "derivative:joined": 169,
+    "derivative:latex_letter_run": 162,
+    "derivative:leibniz": 169,
+    "derivative:spaced": 169,
+    "derivative:upper": 169,
+    "shape:assignment_prefix": 152,
+    "shape:formula_alias": 67,
     "shape:json_as_string": 67,
-    "shape:kind_wrapped": 163,
+    "shape:kind_wrapped": 166,
     "shape:list_as_string": 125,
-    "shape:number_as_string": 162,
-    "syntax:braced_exponent": 166,
-    "transport:code_fence": 27,
-    "transport:dollar_wrapper": 27,
-    "transport:doubled_backslash": 68,
-    "transport:markdown_escape": 83,
-    "transport:trailing_period": 55,
-    "transport:unicode_look_alikes": 60
+    "shape:number_as_string": 165,
+    "syntax:braced_exponent": 169,
+    "transport:code_fence": 30,
+    "transport:dollar_wrapper": 30,
+    "transport:doubled_backslash": 71,
+    "transport:markdown_escape": 86,
+    "transport:trailing_period": 58,
+    "transport:unicode_look_alikes": 63
   },
-  "recovered_without_a_model_call": 1003,
-  "recovery_rate": 0.9872,
-  "references": 172,
-  "tools_covered": 36,
+  "recovered_without_a_model_call": 1009,
+  "recovery_rate": 0.9873,
+  "references": 175,
+  "tools_covered": 37,
   "totals": {
     "diagnosed": 13,
     "different_verified_result": 0,
     "same": 17,
-    "same_after_cleaning": 986,
+    "same_after_cleaning": 992,
     "untyped_failure": 0
   }
 }

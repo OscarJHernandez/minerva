@@ -34,6 +34,15 @@ from .observations import read_count
 from .statmodel_types import Reading, Refusal
 
 MOMENT_KEYS = ("mean", "variance", "second")
+MULTIVARIATE_NAMES = frozenset(
+    {
+        "multivariate_normal",
+        "bivariate_normal",
+        "mvn",
+        "multivariate_gaussian",
+        "bivariate_gaussian",
+    }
+)
 
 
 def _fail(
@@ -50,6 +59,13 @@ def _fail(
 
 def read_model(data: StatModelInput, limits: Limits) -> Reading:
     family = FAMILIES.get(data.family)
+    if family is None and data.family in MULTIVARIATE_NAMES:
+        raise Refusal(
+            Status.UNSUPPORTED,
+            "unsupported_family",
+            "a Normal distribution of two components is the operation multivariate_normal (density, "
+            "moments, marginal, conditional, affine image), not a family of statistical_model",
+        )
     if family is None:
         raise Refusal(
             Status.UNSUPPORTED,

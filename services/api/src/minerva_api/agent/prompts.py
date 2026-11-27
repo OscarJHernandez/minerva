@@ -360,7 +360,7 @@ Statistical mechanics. `statistical_mechanics` builds partition functions and de
     ),
     "statistics": (
         """\
-Statistics. `sums`, `expectation` and `statistical_model` derive and verify; you choose the call and explain.
+Statistics. `sums`, `expectation`, `statistical_model` and `multivariate_normal` derive and verify; you choose the call and explain.
    Independence is never assumed: ask the user whether the observations are independent and identically
    distributed before any likelihood, estimator, information or posterior of several observations, and set `iid`
    only on their word. For `expectation` pass an independence group only if the user stated it; without one the
@@ -371,7 +371,11 @@ Statistics. `sums`, `expectation` and `statistical_model` derive and verify; you
    0 < sum x / n < 1), and if the tool says no estimate exists for the data, say that and give none. A posterior
    holds for the prior the user gave. For a gradient, Jacobian or Hessian use `matrix_calculus` with the plain-text
    syntax; a covariance is symmetric or positive definite only if the user says so, and then give both the
-   symmetric result and the labelled entrywise form. If a tool is `unsupported`, `not_verified` or refuses with a
+   symmetric result and the labelled entrywise form. `multivariate_normal` takes the user's mean and 2 x 2
+   covariance only: never invent an entry, never write a zero off-diagonal entry the user did not state (that
+   claims no correlation), and ask for a missing mean, covariance, value to condition on or map. Say
+   "numerically checked", never "proved"; a result that holds "given" a premise says so. For a follow-up
+   (marginal, conditional) send the model line the previous result printed, unchanged. If a tool is `unsupported`, `not_verified` or refuses with a
    reason, give that reason and no partial answer.\
 """,
     ),
@@ -443,7 +447,7 @@ GROUP_ROUTER: dict[str, str] = {
     "vector": "vector fields (grad, div, curl, coordinate systems): `vector_calculus`; electromagnetic derivations: `electromagnetism`.",
     "geometry": "index symmetries: `tensor_canonicalize` (indices written S(a,b)*A(-a,-b)).",
     "statmech": "partition functions, free energy, heat capacity, thermal averages: `statistical_mechanics`.",
-    "statistics": "finite sums and products, expectation, variance, likelihood, estimators: `sums`, `expectation`, `statistical_model`.",
+    "statistics": "finite sums and products, expectation, variance, likelihood, estimators: `sums`, `expectation`, `statistical_model`; a bivariate Normal (density, marginal, conditional, linear map): `multivariate_normal`.",
     "distributions": "delta or step functions: `distribution`.",
     "approximation": "approximating an expression (Pade, Chebyshev, Fourier, Laurent, large x, small parameter, large sums, a number by fractions): `approximation`.",
     "units": "units of an equation, or the unit of a quantity (name it in `unknown`): `check_units` (name a symbol E as En); dimensionless groups: `dimensional_analysis`.",
@@ -483,7 +487,7 @@ GROUP_TOOLS: dict[str, tuple[str, ...]] = {
     "vector": ("vector_calculus", "electromagnetism"),
     "geometry": ("geometry", "tensor_canonicalize"),
     "statmech": ("statistical_mechanics",),
-    "statistics": ("sums", "expectation", "statistical_model"),
+    "statistics": ("sums", "expectation", "statistical_model", "multivariate_normal"),
     "distributions": ("distribution",),
     "units": ("check_units", "dimensional_analysis"),
     "approximation": ("approximation",),
@@ -499,7 +503,7 @@ GROUP_KEYWORDS: dict[str, str] = {
     "vector": "gradient|divergence|\\bcurl\\b|laplacian|\\bgrad\\b|\\bdiv\\b|nabla|\\\\nabla|cross product|dot product|vector field|cylindrical|spherical coordinates|stokes|gauss'?s? (law|theorem)|maxwell|electromagnet|electrostatic|poynting|gauge|flux|line integral|surface integral|poisson|coulomb|multipole|delta function|\\\\delta\\^|point (charge|source)|distributional",
     "geometry": "metric|christoffel|curvature|riemann|ricci|geodesic|einstein tensor|schwarzschild|covariant derivative|tensor|manifold|spacetime|minkowski|killing|isometr|\\\\nabla_",
     "statmech": "partition function|statistical mechanic|canonical ensemble|ensemble|free energy|heat capacity|boltzmann|entropy|\\bising\\b|thermodynamic|fermi[- ]dirac|bose[- ]einstein|microcanonical|density of states",
-    "statistics": "expectation|variance|covariance|likelihood|estimator|posterior|\\bprior\\b|fisher information|random variable|probabilit|\\bmle\\b|\\bi\\.?i\\.?d\\b|\\\\sum|\\\\prod|summation|finite sum|\\bsum of\\b|\\bmean of\\b|normal distribution|poisson|binomial|bernoulli|gaussian",
+    "statistics": "expectation|variance|covariance|likelihood|estimator|posterior|\\bprior\\b|fisher information|random variable|probabilit|\\bmle\\b|\\bi\\.?i\\.?d\\b|\\\\sum|\\\\prod|summation|finite sum|\\bsum of\\b|\\bmean of\\b|normal distribution|multivariate (normal|gaussian)|bivariate (normal|gaussian)|joint normal|poisson|binomial|bernoulli|gaussian",
     "distributions": "dirac|heaviside|step function|delta function|generali[sz]ed function|\\\\delta\\s*\\(",
     "approximation": "approximat|pad[eé]|chebyshev|fourier|legendre|laurent|maclaurin|spline|interpolat|continued fraction|convergent|asymptotic|large[- ]?x|large distance|far[- ]field|leading[- ]order|leading term|to (first|second|third|fourth) order|small (parameter|x|angle)|residue|\\bpole\\b|\\blimit\\b|expansion|euler[- ]maclaurin|laplace'?s? method|accurate to|decimal places?|tolerance|sums? for large",
     "identity": "is (it|that|this) (true|correct|right)|confirm that|does .{1,80}\\bhold\\b|\\bidentit(y|ies)\\b|is .{1,60} equal to|\\bfor (every|all|any)\\b|\\b(right|correct|true)\\?",

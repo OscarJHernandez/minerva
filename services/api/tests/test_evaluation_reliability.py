@@ -1047,6 +1047,52 @@ CHAT_SCRIPTS: dict[str, dict[str, Any]] = {
     },
 }
 EXTRA_SCRIPTS.update(CHAT_SCRIPTS)
+
+MVN_MODEL = {"mean": ["1", "-2"], "covariance": [["4", "1"], ["1", "2"]], "variables": ["x", "y"]}
+
+
+def mvn_turns(*, covariance: list[list[str]] | None = None) -> list[Any]:
+    model = {**MVN_MODEL, **({"covariance": covariance} if covariance else {})}
+    return [
+        call("multivariate_normal", {**model, "action": "density"}),
+        say("The card gives the joint density, numerically checked by quadrature."),
+        call("multivariate_normal", {**MVN_MODEL, "action": "marginal", "keep": "x"}),
+        say("The card gives the marginal of x."),
+        call(
+            "multivariate_normal",
+            {**MVN_MODEL, "action": "conditional", "given": {"x": "3"}},
+        ),
+        say("Given x = 3, y has mean $-3/2$ and variance $7/4$."),
+    ]
+
+
+MVN_SCRIPTS: dict[str, dict[str, Any]] = {
+    "bivariate-normal-density-marginal-conditional": {
+        "ideal": mvn_turns(),
+        "adversarial": {
+            # a zero off-diagonal entry the user never wrote: the call answers another question
+            FailureClass.ARGUMENTS: mvn_turns(covariance=[["4", "0"], ["0", "2"]]),
+        },
+    },
+    "bivariate-normal-covariance-missing-is-asked": {
+        "ideal": [say("Which covariance matrix does (X, Y) have? The density depends on it.")],
+        "adversarial": {
+            FailureClass.TOOL_SELECTION: [
+                call(
+                    "multivariate_normal",
+                    {
+                        "mean": ["0", "0"],
+                        "covariance": [["1", "0"], ["0", "1"]],
+                        "variables": ["x", "y"],
+                        "action": "density",
+                    },
+                ),
+                say("With the identity covariance the density is the card's."),
+            ],
+        },
+    },
+}
+EXTRA_SCRIPTS.update(MVN_SCRIPTS)
 SCRIPTS.update(EXTRA_SCRIPTS)
 
 IDEAL = [(case_id, s["ideal"]) for case_id, s in SCRIPTS.items()]

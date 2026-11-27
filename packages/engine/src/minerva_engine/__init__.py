@@ -91,6 +91,7 @@ from .stats.models import (
     StatModelInput,
     StatModelResult,
 )
+from .stats.mvn_models import MvnCheck, MvnInput, MvnResult
 from .textparse import parse_text
 from .variational import EndpointCondition, VariationInput, VariationReport
 from .vector import FieldDecl, VectorInput, VectorResult
@@ -147,6 +148,9 @@ __all__ = [
     "MinervaMathError",
     "MotionReport",
     "MotionRequest",
+    "MvnCheck",
+    "MvnInput",
+    "MvnResult",
     "OdeAnalysis",
     "OdeAnalyzeInput",
     "OdeCondition",

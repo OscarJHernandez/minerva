@@ -63,6 +63,7 @@ from .series import SeriesResult
 from .solve import SolveReport
 from .statmech.models import StatMechInput, StatMechResult
 from .stats.models import ExpectationInput, ExpectationResult, StatModelInput, StatModelResult
+from .stats.mvn_models import MvnInput, MvnResult
 from .variational import VariationInput, VariationReport
 from .vector import VectorDiagnostics, VectorInput, VectorResult
 
@@ -295,6 +296,23 @@ class Engine:
                 duration_ms=ms,
             )
         result = StatModelResult(**outcome.value)
+        result.duration_ms = ms
+        return result
+
+    def multivariate_normal(self, request: MvnInput) -> MvnResult:
+        """Density, moments, marginal, conditional and affine image of a bivariate Normal, each shown
+        only if quadrature of the printed result at sampled parameter values agrees."""
+        outcome, ms = self._run("multivariate_normal", {"input": request.model_dump()})
+        if outcome.outcome is not Outcome.OK or outcome.value is None:
+            status, message = self._failure_status(outcome.outcome)
+            return MvnResult(
+                status=status,
+                action=request.action,
+                reason="resource_limit" if status is Status.RESOURCE_LIMIT else None,
+                message=message,
+                duration_ms=ms,
+            )
+        result = MvnResult(**outcome.value)
         result.duration_ms = ms
         return result
 

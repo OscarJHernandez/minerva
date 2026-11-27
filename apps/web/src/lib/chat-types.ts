@@ -30,6 +30,61 @@ import type { TelescopingResult } from "./telescoping-types";
 /** Who chose the numbers of a numerical run (`motion`, `ode_numeric`). */
 export type ValuesChosenBy = "user" | "assistant_delegated" | "assistant";
 
+/** Why the bivariate Normal operation refused (`MvnReason` of the engine): a closed list. */
+export type MvnReason =
+  | "dimension_unsupported"
+  | "not_symmetric"
+  | "not_positive_definite"
+  | "singular_covariance"
+  | "map_singular"
+  | "variables_missing"
+  | "index_invalid"
+  | "parse_error"
+  | "verification_failed"
+  | "resource_limit";
+
+export interface MvnCheck {
+  kind: "normalisation" | "moments" | "marginal" | "conditional" | "affine";
+  method: string;
+  points_checked: number;
+  points_agreed: number;
+  passed: boolean;
+  note: string;
+}
+
+/** `multivariate_normal`: the distribution the result describes, shown only if quadrature of it agreed. */
+export interface MvnResult {
+  status: Status;
+  action: "density" | "moments" | "marginal" | "conditional" | "affine";
+  reason: MvnReason | null;
+  message: string;
+  variables: string[];
+  mean_text: string[];
+  mean_latex: string[];
+  covariance_text: string[][];
+  covariance_latex: string[][];
+  density_text: string;
+  density_latex: string;
+  correlation_text: string;
+  correlation_latex: string;
+  /** The model as read, so a follow-up re-sends exactly it. */
+  input_mean_text: string[];
+  input_covariance_text: string[][];
+  checks: MvnCheck[];
+  conditions: { latex: string; established: boolean; how: string }[];
+  premises: string[];
+  evidence: "identity" | "conditional" | null;
+  duration_ms: number;
+}
+
+/** Who wrote the mean and covariance of a `multivariate_normal` call (a label, never a refusal). */
+export interface MvnProvenance {
+  who: ValuesChosenBy;
+  /** The entries no message of the user wrote. */
+  values: string[];
+  label: string | null;
+}
+
 export interface ExpansionReport {
   status: Status;
   lagrangian_latex: string | null;
@@ -674,6 +729,13 @@ type CardBody =
       type: "statistics";
       title: string;
       data: { result: StatModelResult; request: Record<string, unknown> };
+    }
+  | {
+      id: string;
+      tool: string;
+      type: "multivariate_normal";
+      title: string;
+      data: { result: MvnResult; request: Record<string, unknown>; provenance?: MvnProvenance };
     }
   | { id: string; tool: string; type: "identities"; title: string; data: IdentitiesResult }
   | {

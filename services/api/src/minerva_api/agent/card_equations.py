@@ -1055,6 +1055,11 @@ EXCLUDED_WITH_REASON: dict[str, str] = {
     "motion": (
         "a numerical solution of the user's own Lagrangian; the only formula it displays is that input, quoted"
     ),
+    "multivariate_normal": (
+        "a mean vector, a covariance matrix and a density, shown together and checked by quadrature of the "
+        "printed density; not numbered yet (a number would name a vector or matrix, which `@eN` cannot carry "
+        "with the model it was computed under), so no handle and no `@rN` either"
+    ),
 }
 
 

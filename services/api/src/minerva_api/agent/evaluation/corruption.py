@@ -62,6 +62,7 @@ DEPENDENT_TOOLS = frozenset(
 EXEMPT: dict[str, str] = {
     "geometry": "its inputs are nested grids, not a formula string; corrupted by tests of its own parser",
     "effective_potential": "its inputs are a metric grid and role names, not a formula string; the metric cells go through the geometry parser, corrupted by tests of its own",
+    "multivariate_normal": "its inputs are short text-syntax entries in lists and a grid (mean, covariance, map), which prepare_arguments does not clean; a damaged entry is refused by the engine's own text parser with a typed parse_error (test_mvn.py), never read as another number",
     "load_tools": "takes group names, no mathematics",
     "search_invariants": "no benchmark case yet; shares the Lagrangian reader with analyze_lagrangian",
     "sums": "no benchmark case yet; shares the parser with expectation",

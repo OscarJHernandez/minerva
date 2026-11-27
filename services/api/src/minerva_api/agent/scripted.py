@@ -8,6 +8,7 @@ marks in the interface are the real ones; only the "thinking" is scripted.
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
@@ -89,6 +90,61 @@ def _scripted_vector(latex: str, lower: str) -> dict[str, Any]:
         args["action"] = (
             "distributional"  # a point source: the delta term, not only the classical 0
         )
+    return args
+
+
+_MVN_WORDS = ("bivariate normal", "bivariate gaussian", "multivariate normal", "joint normal")
+_MVN_MODEL_LINE = re.compile(
+    r"model \(send exactly this again for a follow-up\): mean=(\[.*?\]); covariance=(\[\[.*?\]\])"
+    r"(?:; variables=(\[.*?\]))?$",
+    re.M,
+)
+_NUMBER_TEXT = r"-?\d+(?:\.\d+)?(?:/\d+)?"
+
+
+def _scripted_mvn(
+    user: str, lower: str, messages: Sequence[dict[str, Any]]
+) -> dict[str, Any] | None:
+    """Development stand-in for a model asked about a bivariate Normal: the model (mean, covariance, names)
+    is taken from the user's own message, else from the model line an earlier result printed; nothing is
+    defaulted, and a missing piece is a question."""
+    mean: list[str] | None = None
+    covariance: list[list[str]] | None = None
+    variables: list[str] | None = None
+    if found := re.search(r"mean\s*\(([^()]*)\)", lower):
+        mean = [p.strip() for p in found.group(1).split(",")]
+    if found := re.search(r"covariance\s*\[\s*\[([^\]]*)\]\s*,\s*\[([^\]]*)\]\s*\]", lower):
+        covariance = [[p.strip() for p in row.split(",")] for row in found.groups()]
+    if found := re.search(r"\bfor \(([A-Za-z]\w*)\s*,\s*([A-Za-z]\w*)\)", user):
+        variables = list(found.groups())
+    if mean is None or covariance is None:
+        for message in reversed(messages):
+            if message["role"] != "tool":
+                continue
+            line = _MVN_MODEL_LINE.search(str(message.get("content", "")))
+            if line:
+                mean, covariance = json.loads(line.group(1)), json.loads(line.group(2))
+                if variables is None and line.group(3):
+                    variables = json.loads(line.group(3))
+                break
+    if mean is None or covariance is None or len(mean) != 2:
+        return None
+    args: dict[str, Any] = {"mean": mean, "covariance": covariance}
+    if variables:
+        args["variables"] = variables
+    names = variables or []
+    if "marginal" in lower:
+        kept = re.search(r"marginal of \$?([A-Za-z]\w*)", user)
+        args.update(action="marginal", keep=kept.group(1) if kept else (names or ["x"])[0])
+    elif "condition" in lower or "given" in lower:
+        value = re.search(rf"([A-Za-z]\w*)\s*=\s*({_NUMBER_TEXT})", user)
+        if value is None:
+            return None
+        args.update(action="conditional", given={value.group(1): value.group(2)})
+    elif "correlation" in lower or "moments" in lower:
+        args["action"] = "moments"
+    else:
+        args["action"] = "density"
     return args
 
 
@@ -181,6 +237,18 @@ class ScriptedLLM:
                 "I did not run a tool for this."
             ):
                 yield c
+        elif any(w in lower for w in _MVN_WORDS):
+            mvn_args = _scripted_mvn(user, lower, messages)
+            if mvn_args is None:
+                async for c in self._say(
+                    "I need the mean and the covariance matrix (and the names of the two components). "
+                    "I will not choose them."
+                ):
+                    yield c
+            else:
+                async for c in self._say("I will compute it and check it by quadrature. "):
+                    yield c
+                yield Chunk(tool_calls=[ToolCall("multivariate_normal", mvn_args)])
         elif "substitut" in lower and len(_DOLLAR.findall(user)) >= 2:
             # Development stand-in: the first formula is the expression, the others are the user's relations.
             formulas = [f.strip() for f in _DOLLAR.findall(user)]
@@ -1033,6 +1101,21 @@ class ScriptedLLM:
                 )
             else:
                 text = f"I could not complete that ({status}). The card gives the reason."
+        elif tool == "multivariate_normal":
+            found = re.search(r"status=(\w+)", content)
+            status = found.group(1) if found else "failed"
+            if status == "ok" and "HOLDS GIVEN" in content:
+                text = (
+                    "The card shows the result, which holds **given** the condition it lists (for example "
+                    "that the covariance is positive definite): Minerva did not check that it is true."
+                )
+            elif status == "ok":
+                text = (
+                    "The card shows the mean, the covariance and the result. Minerva checked the printed "
+                    "result by numerical quadrature: that is evidence, not a proof."
+                )
+            else:
+                text = f"I could not complete that ({status}). The card gives the reason; no partial answer is shown."
         elif tool in ("statistical_model", "expectation", "sums"):
             found = re.search(r"status=(\w+)", content)
             status = found.group(1) if found else "failed"

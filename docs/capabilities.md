@@ -3699,6 +3699,68 @@ Derive, from a density, the moments of a family (Bernoulli, binomial, Poisson, n
 - Refused (regularity_not_satisfied).
 - the support of the Uniform on (0, theta) family depends on its parameter: differentiation under the integral sign is not allowed, so the Fisher information (as -E[second derivative] or as the variance of the score) is not defined
 
+### The bivariate Normal distribution
+
+*Available in:* chat, HTTP API.
+
+Give the mean and covariance of a Normal distribution of two components and Minerva writes its density, its moments and correlation, the marginal of one component, the conditional distribution of one component given the other's value (the Schur complement), or the distribution of an affine image A X + b. The covariance must be exactly symmetric and is checked to be positive definite first. Each result is shown only if SciPy quadrature of the printed result agrees with a density built in floating point from the numbers, at sampled values of any symbols: numerically checked, not proved.
+
+**Limits**
+
+- Two components only. The independent check is a nested quadrature, and in three dimensions it took minutes per integral.
+- A singular covariance, or a map A without full row rank, has no density and is refused; no pseudoinverse is used.
+- Symbols whose assumptions do not decide positive definiteness give a result that holds only given it.
+- Independence of the components is never assumed; estimation from data and priors are not covered.
+
+#### X given Y = 1, by the Schur complement
+
+- **Mean:** `1, -2`
+- **Covariance:** `4, 1; 1, 2`
+- **Action:** `conditional`
+- **Given:** `y = 1`
+- **Status:** `ok`
+- **Mean:** $\begin{pmatrix}\frac{5}{2}\end{pmatrix}$
+- **Covariance:** $\begin{pmatrix}\frac{7}{2}\end{pmatrix}$
+- **Density:** $\frac{\sqrt{7} \mathrm{e}^{- \frac{\left(x - \frac{5}{2}\right)^{2}}{7}}}{7 \sqrt{\pi}}$
+- **Check:** the printed conditional density against the joint density divided by its integral over the free component (SciPy quadrature), at three values, and its normalisation: 1 of 1
+- numerically checked: SciPy quadrature at sampled parameter values agreed; numerical agreement is evidence, not a proof
+
+#### The sum and difference of two correlated normals
+
+- **Mean:** `1, -2`
+- **Covariance:** `4, 1; 1, 2`
+- **Action:** `affine`
+- **Map A X + b:** `A = 1, 1; 1, -1, b = 0, 3`
+- **Status:** `ok`
+- **Mean:** $\begin{pmatrix}-1 \\ 6\end{pmatrix}$
+- **Covariance:** $\begin{pmatrix}8 & 2 \\ 2 & 4\end{pmatrix}$
+- **Check:** the mean and covariance of A X + b by SciPy quadrature under the original density (built in floating point from the numeric mean and covariance): 1 of 1
+- numerically checked: SciPy quadrature at sampled parameter values agreed; numerical agreement is evidence, not a proof
+
+#### A symbolic covariance holds given its positive definiteness
+
+- **Mean:** `m, 0`
+- **Covariance:** `s, r; r, s`
+- **Action:** `density`
+- **Assumptions:** m real; s positive; r real
+- **Status:** `ok`
+- **Mean:** $\begin{pmatrix}m \\ 0\end{pmatrix}$
+- **Covariance:** $\begin{pmatrix}s & r \\ r & s\end{pmatrix}$
+- **Density:** $\frac{\mathrm{e}^{\frac{- 2 r y \left(- m + x\right) + s y^{2} + s \left(- m + x\right)^{2}}{2 \left(r - s\right) \left(r + s\right)}}}{2 \pi \sqrt{- \left(r - s\right) \left(r + s\right)}}$
+- **Check:** SciPy quadrature of the printed density over the plane: 4 of 4
+- **Check:** SciPy quadrature of the printed density: means and covariances equal the given ones: 4 of 4
+- Holds given: \det\Sigma = - \left(r - s\right) \left(r + s\right) > 0 (not established by the declared assumptions).
+- numerically checked: SciPy quadrature at sampled parameter values agreed; numerical agreement is evidence, not a proof
+
+#### A singular covariance has no density
+
+- **Mean:** `0, 0`
+- **Covariance:** `1, 1; 1, 1`
+- **Action:** `density`
+- **Status:** `unsupported`
+- Refused (singular_covariance).
+- the covariance matrix is singular (its determinant is zero): the distribution has no density, and Minerva does not use a pseudoinverse
+
 ### Gradients, Jacobians and Hessians of matrix functions
 
 *Available in:* workbench, chat, HTTP API.

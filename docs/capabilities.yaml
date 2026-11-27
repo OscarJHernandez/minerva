@@ -31,6 +31,8 @@
 #   statistics   family, parametrization, parameters {name: text}, observation, sample_size, iid, estimate [names],
 #                action (moments | log_likelihood | score | mle | fisher_information | posterior), prior {family,
 #                parameters}, data [numbers], candidate {key: text}, assumptions
+#   mvn          mean [2], covariance [[2 x 2]], variables [2 names], action (density | moments | marginal |
+#                conditional | affine), keep, given {component: value}, matrix [[2] x 1 or 2], offset, assumptions
 #   identities   input, assumptions, show [rule ids to display]
 #   geometry     coordinates, metric [[expression]], assumptions, functions [{name, args}], quantities, tensor {variance,
 #                components}, tensor_index
@@ -3172,6 +3174,57 @@ capabilities:
         estimate: [theta]
         action: fisher_information
         assumptions: { theta: [positive] }
+
+  - id: bivariate-normal
+    title: The bivariate Normal distribution
+    status: available
+    group: statistics
+    where: [chat, api]
+    summary: >-
+      Give the mean and covariance of a Normal distribution of two components and Minerva writes its density, its
+      moments and correlation, the marginal of one component, the conditional distribution of one component given
+      the other's value (the Schur complement), or the distribution of an affine image A X + b. The covariance must be
+      exactly symmetric and is checked to be positive definite first. Each result is shown only if SciPy quadrature of
+      the printed result agrees with a density built in floating point from the numbers, at sampled values of any
+      symbols: numerically checked, not proved.
+    limits:
+      - Two components only. The independent check is a nested quadrature, and in three dimensions it took minutes per integral.
+      - A singular covariance, or a map A without full row rank, has no density and is refused; no pseudoinverse is used.
+      - Symbols whose assumptions do not decide positive definiteness give a result that holds only given it.
+      - Independence of the components is never assumed; estimation from data and priors are not covered.
+    examples:
+      - id: bivariate-conditional
+        title: X given Y = 1, by the Schur complement
+        op: mvn
+        mean: ["1", "-2"]
+        covariance: [["4", "1"], ["1", "2"]]
+        variables: [x, y]
+        action: conditional
+        given: { y: "1" }
+      - id: bivariate-affine-image
+        title: The sum and difference of two correlated normals
+        op: mvn
+        mean: ["1", "-2"]
+        covariance: [["4", "1"], ["1", "2"]]
+        variables: [x, y]
+        action: affine
+        matrix: [["1", "1"], ["1", "-1"]]
+        offset: ["0", "3"]
+      - id: bivariate-symbolic-density
+        title: A symbolic covariance holds given its positive definiteness
+        op: mvn
+        mean: [m, "0"]
+        covariance: [[s, r], [r, s]]
+        variables: [x, y]
+        action: density
+        assumptions: { m: [real], s: [positive], r: [real] }
+      - id: bivariate-singular-refused
+        title: A singular covariance has no density
+        op: mvn
+        mean: ["0", "0"]
+        covariance: [["1", "1"], ["1", "1"]]
+        variables: [x, y]
+        action: density
 
   - id: matrix-gradients
     title: Gradients, Jacobians and Hessians of matrix functions
