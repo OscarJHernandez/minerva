@@ -125,6 +125,25 @@ def test_the_bound_of_an_estimated_parameter_is_left_to_the_estimator(engine) ->
     assert r.reason != "observation_outside_support"
 
 
+@pytest.mark.parametrize(("data", "bound"), [(["1"], "1"), (["1", "2"], "2")])
+def test_a_uniform_likelihood_holds_only_where_theta_admits_the_data(engine, data, bound) -> None:
+    # 1/theta is the density only on (0, theta): for theta at or below an observation the likelihood is 0
+    r = engine.statistical_model(
+        StatModelInput(
+            family="uniform_0_theta",
+            action="log_likelihood",
+            estimate=["theta"],
+            observation="x",
+            data=data,
+            iid=True,
+        )
+    )
+    assert r.status is Status.OK
+    assert r.evidence == "conditional"
+    assert any(f"theta > {bound}" in p for p in r.premises), r.premises
+    assert all(s.evidence == "conditional" for s in r.steps)
+
+
 # ---------------------------------------------------------------------------------- counts (#232)
 
 
