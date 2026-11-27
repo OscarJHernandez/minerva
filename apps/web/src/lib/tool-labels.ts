@@ -27,6 +27,7 @@ export const TOOL_LABEL: Record<string, string> = {
   sums: "Rewriting the sum and checking it on explicit instances",
   expectation: "Expanding moments and checking against explicit joint distributions",
   statistical_model: "Deriving from the model and checking by a different route",
+  multivariate_normal: "Computing with the bivariate Normal and checking by quadrature",
   solve_polynomial: "Solving and verifying the roots",
   analyze_lagrangian: "Deriving equations of motion and checking symmetries",
   integrate_motion: "Integrating the equations of motion and verifying the run",

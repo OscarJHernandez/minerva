@@ -59,6 +59,9 @@ REFERENCEABLE_TOOLS = frozenset(
 # what was held fixed and of the rebuilt velocities are numbered list rows (names, no id).
 # `effective_potential`: the id names the radial equation `r_dot^2 + V_eff(r) = alpha p^2` (`result_latex`) with its
 # restrictions; `V_eff(r) = ...` is a numbered list row (a name, no id).
+# `multivariate_normal` is NOT referenceable: it has no single result expression (a mean vector, a covariance matrix
+# and a density) and a bare `@rN` would drop the model it was computed under; a follow-up re-sends the model the
+# card returned (`mvn_tools.MODEL_LINE`) instead.
 # Arguments that may contain references (the ones that hold a mathematical expression).
 EXPRESSION_ARGUMENTS = MATH_FIELDS
 

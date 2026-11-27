@@ -271,6 +271,7 @@ def test_tools_have_no_side_effects_surface(ctx: ToolContext) -> None:
             "sums",
             "expectation",
             "statistical_model",
+            "multivariate_normal",
             "statistical_mechanics",
         }
     )

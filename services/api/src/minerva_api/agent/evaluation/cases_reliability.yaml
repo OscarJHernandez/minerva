@@ -509,6 +509,68 @@
           format: text
   source: "Schwarzschild geodesics: t and phi are cyclic (p_t = -E, p_phi = L_z), the Killing vectors d_t, d_phi and the three rotations give charges, Routh reduction by t leaves a Routhian in the held p_t (Landau and Lifshitz, Mechanics, section 41); the engine's own checks decide each turn; total angular momentum J^2 is a quadratic combination of the rotation charges and is not in the families discovery searches"
 
+# Issue 229: the bivariate Normal. The mean and covariance are the user's: a model that writes a zero off-diagonal entry
+# (a claim of no correlation) or any entry the user never gave has answered another question, and one that is asked
+# for a density with no covariance must ask. The follow-ups re-send the model of the first turn (the tool text prints
+# it) and the numbers asked for come from the engine's own checked results (conditional mean -2 + (1/4)(3 - 1) = -3/2,
+# variance 2 - 1/4 = 7/4).
+- id: bivariate-normal-density-marginal-conditional
+  category: followup
+  prompt: 'A bivariate normal vector (X, Y) has mean (1, -2) and covariance matrix [[4, 1], [1, 2]]. Give its joint density as a function of x and y.'
+  expected_tool: multivariate_normal
+  args: {includes: {mean: ['1', '-2'], covariance: [['4', '1'], ['1', '2']]}, equals: {action: density}}
+  forbid_assumptions: true
+  max_calls: 2
+  expect_card: {status: ok}
+  reply_forbids: '(?i)\b(is|was|been|be) (proved|proven)\b|\bproved (that|the)\b'
+  reference:
+    tool: multivariate_normal
+    arguments:
+      mean: ['1', '-2']
+      covariance: [['4', '1'], ['1', '2']]
+      variables: [x, y]
+      action: density
+  followups:
+    - prompt: 'Now the marginal distribution of x.'
+      expected_tool: multivariate_normal
+      args: {includes: {mean: ['1', '-2'], covariance: [['4', '1'], ['1', '2']]}, equals: {action: marginal, keep: x}}
+      forbid_assumptions: true
+      max_calls: 2
+      expect_card: {status: ok}
+      reference:
+        tool: multivariate_normal
+        arguments:
+          mean: ['1', '-2']
+          covariance: [['4', '1'], ['1', '2']]
+          variables: [x, y]
+          action: marginal
+          keep: x
+    - prompt: 'And y given that x = 3?'
+      expected_tool: multivariate_normal
+      args: {includes: {mean: ['1', '-2'], covariance: [['4', '1'], ['1', '2']]}, equals: {action: conditional, given: {x: '3'}}}
+      forbid_assumptions: true
+      max_calls: 2
+      expect_card: {status: ok}
+      reply_matches: '3\s*/\s*2|\\frac\{3\}\{2\}|1\.5'
+      reference:
+        tool: multivariate_normal
+        arguments:
+          mean: ['1', '-2']
+          covariance: [['4', '1'], ['1', '2']]
+          variables: [x, y]
+          action: conditional
+          given: {x: '3'}
+  source: "Anderson, An Introduction to Multivariate Statistical Analysis, section 2.4 (the conditional of a bivariate Normal: mean mu_y + (s_xy / s_xx)(x - mu_x), variance s_yy - s_xy^2 / s_xx); the engine's own quadrature checks decide each turn"
+
+- id: bivariate-normal-covariance-missing-is-asked
+  category: ambiguous
+  prompt: 'A bivariate normal vector (X, Y) has mean (0, 0). Give its joint density as a function of x and y.'
+  expected_tool: none
+  # No covariance was given: the density depends on it, and an identity matrix or a zero correlation is a claim the user did not make.
+  reply_matches: '(?i)covariance'
+  reply_forbids: '(?i)\b(assum(e|ing|ed)|take|taking|use|using) (an? )?(identity|unit|independent|uncorrelated|zero correlation)'
+  source: "the density of a Normal vector needs its covariance matrix; no covariance, no density (nothing is defaulted)"
+
 - id: answer-without-thinking-aloud
   category: ambiguous
   prompt: 'Whats the tautochrone problem, in two sentences?'

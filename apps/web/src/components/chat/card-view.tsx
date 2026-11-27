@@ -28,6 +28,7 @@ import { ValuesNote } from "./values-note";
 import { OdeAnalysisCard, OdeNumericCard, OdeSolutionCard } from "./ode-card";
 import { PerturbationCard } from "./perturbation-card";
 import { EffectivePotentialCard } from "./effective-potential-card";
+import { MvnCard } from "./mvn-card";
 import { RouthCard } from "./routh-card";
 import { SolveCard } from "./solve-card";
 import { IdentityCard } from "./identity-card";
@@ -141,6 +142,14 @@ function CardContent({ card }: { card: Card }) {
           kind="statistics"
           result={card.data.result}
           headingId={`stat-${card.id}`}
+        />
+      );
+    case "multivariate_normal":
+      return (
+        <MvnCard
+          result={card.data.result}
+          provenance={card.data.provenance}
+          headingId={`mvn-${card.id}`}
         />
       );
     case "geometry":

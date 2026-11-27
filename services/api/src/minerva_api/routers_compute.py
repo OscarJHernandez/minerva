@@ -23,6 +23,8 @@ from minerva_engine import (
     IsolateResult,
     MatrixCalculusInput,
     MatrixCalculusResult,
+    MvnInput,
+    MvnResult,
     OdeAnalysis,
     OdeAnalyzeInput,
     OdeInput,
@@ -1016,6 +1018,31 @@ def statistics(
             result.status.value, saved,
         )  # fmt: skip
     return out
+
+
+@router.post("/mvn", response_model=MvnResult)
+def multivariate_normal(
+    body: MvnInput,
+    user: UserDep,
+    engine: EngineDep,
+    limiter: LimiterDep,
+    settings: SettingsDep,
+) -> MvnResult:
+    """A bivariate Normal given by the caller's mean and covariance; a result is shown only if quadrature agrees.
+
+    Nothing is saved: the request holds the whole model, so it is replayable. Logged: status, duration, reason.
+    """
+    texts = [
+        *body.mean,
+        *(e for row in body.covariance for e in row),
+        *(e for row in body.matrix or [] for e in row),
+        *(body.offset or []),
+        *(body.given or {}).values(),
+    ]
+    _guard(user, limiter, settings, max((len(t) for t in texts), default=0))
+    result = engine.multivariate_normal(body)
+    _log("multivariate_normal", result, user)
+    return result
 
 
 def _model_length(body: StatisticsRequest) -> int:

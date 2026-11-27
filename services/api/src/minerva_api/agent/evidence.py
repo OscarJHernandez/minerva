@@ -23,6 +23,7 @@ _CHECK_BY_TOOL: dict[str, CheckKind] = {
     "sums": "numeric",  # explicit instances at several sizes, never a proof for every n
     "expectation": "numeric",  # explicit finite joint distributions
     "statistical_model": "numeric",  # quadrature / direct log-likelihood / prior x likelihood
+    "multivariate_normal": "numeric",  # SciPy quadrature of the printed result; never a symbolic zero
     "solve_polynomial": "symbolic_zero",
     "analyze_lagrangian": "numeric",
     "effective_potential": "numeric",  # two numerical legs on the full geodesic equations; a symbolic leg is reported apart

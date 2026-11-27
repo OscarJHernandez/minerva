@@ -46,6 +46,7 @@ class Card(BaseModel):
         "sums",
         "expectation",
         "statistics",
+        "multivariate_normal",
         "geometry",
         "vector",
         "distribution",

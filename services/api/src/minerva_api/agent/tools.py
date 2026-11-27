@@ -4885,6 +4885,7 @@ MATRIX_SAFE: dict[str, str] = {
     "dimensional_analysis": "dimensions of the declared quantities only",
     "expectation": "random variables the caller declares; a matrix is not one and undeclared symbols are refused",
     "statistical_model": "families and parameters typed by their own schema",
+    "multivariate_normal": "a bivariate Normal typed by its own schema: the entries of the mean and covariance are scalars of a distribution, and the engine refuses an asymmetric or non positive definite covariance",
     "statistical_mechanics": "systems typed by their own schema; refuses what it cannot build",
     "geometry": "explicit coordinates and metric components; the quantities are numbers or functions of them",
     "effective_potential": "explicit coordinates and metric components, as `geometry`; refuses a declared function",
@@ -5194,6 +5195,25 @@ TOOLS["statistical_model"] = Tool(
     "Uniform(0, theta), moments that do not exist (Cauchy) and kernels outside the known families.",
     StatModelArgs,
     run_statistical_model,
+)
+
+
+from .mvn_tools import MvnArgs, run_multivariate_normal  # noqa: E402
+
+TOOLS["multivariate_normal"] = Tool(
+    "multivariate_normal",
+    "A bivariate Normal distribution given by the USER's mean and 2 x 2 covariance matrix: its density, "
+    "its moments and correlation, the marginal of one component, the conditional distribution of one "
+    "component given a value of the other, and the image under a linear map. A result is shown only if "
+    "numerical quadrature of the printed answer agrees; word it 'numerically checked', never 'proved'. "
+    "Never invent a mean, a covariance entry, a value to condition on or a map, and never read a zero "
+    "off-diagonal entry into a covariance the user did not give (that is a claim of no correlation): ask. "
+    "Refuses (with a reason) a covariance that is not symmetric and positive definite, a singular one "
+    "(no density), a singular map, missing component names and more than two components. With symbolic "
+    "entries whose positive definiteness the declared assumptions do not decide, the result HOLDS GIVEN "
+    "that condition.",
+    MvnArgs,
+    run_multivariate_normal,
 )
 
 

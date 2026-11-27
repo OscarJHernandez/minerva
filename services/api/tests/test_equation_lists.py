@@ -77,7 +77,7 @@ def test_every_card_type_is_classified_for_equation_numbers() -> None:
 
 
 def test_every_exclusion_states_its_reason() -> None:
-    assert set(EXCLUDED_WITH_REASON) == {"ode_numeric", "motion"}
+    assert set(EXCLUDED_WITH_REASON) == {"ode_numeric", "motion", "multivariate_normal"}
     assert all(len(reason) > 30 for reason in EXCLUDED_WITH_REASON.values())
 
 
