@@ -1181,6 +1181,14 @@ Local ports: web 3000, site 3001, API 8100 (8000 is left free for other projects
   no positivity declared or a symbolic Bernoulli `p` is conditional. The constraint of a parameter being ESTIMATED
   (`role == "estimated"`) is the estimator's admissibility, never a premise about the input (#233). `Numeric` binds parameters through dummies: a parameter named `beta` shadows mpmath's.
 - Statistical derivations (`stats/likelihood.py`, `mle.py`, `fisher.py`, `posterior.py`; operation `statistical_model`):
+  **observations and the sample size are read once, by `stats/observations.py: read_count`** (called by `read_model` for every
+  action but moments, before any computation): `sample_size` is digits >= 1 or a plain name that is not the data or a
+  parameter (else `sample_size_invalid`; never a symbol named `-1`), `data` fixes the count (`sample_size_conflict`,
+  `no_observations`), every concrete value must lie in the family's support with its own open or closed ends
+  (`Family.support_open`; a fraction for a Poisson count, Beta 0 or 1: `observation_outside_support`), a symbolic bound
+  that cannot be decided is an unestablished condition and a bound of an estimated parameter is the estimator's. Fisher
+  information uses the same count (iid unless it is exactly 1; only a symbolic count is sampled by its check). Do not
+  give a likelihood, estimator or information its own reading of these fields.
   **independence is never assumed** (`iid` must be stated, else `independence_not_declared`, and a result that used it is
   `conditional`); a prior is an assumption of the result and the result says so. Estimators are derived by solving the score
   equations of the expanded log-likelihood (triangular systems only) and shown only if, on explicit data inside the support,

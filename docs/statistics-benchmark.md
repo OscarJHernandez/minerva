@@ -191,8 +191,14 @@ steps of the derivation with the evidence for them, and anything that cannot be 
 | fisher | 11 | 11 |
 | posterior | 9 | 9 |
 
-**All 108 cases pass (51 supported, 28 refused as designed, 29 wrong answers rejected), and the five derivations of the
+**All 118 cases pass (51 supported, 38 refused as designed, 29 wrong answers rejected), and the five derivations of the
 minimum successful outcome are complete**: Gaussian mean and variance, Bernoulli, Beta-Binomial, Normal Fisher
 information and the multivariate Gaussian gradient. Latency: median 40 ms, p95 2.3 s (the slowest are Beta moments and
 Fisher information, a few seconds each, under the 10 s sandbox timeout; the tests run the five required derivations at
 the product's default limits).
+
+Ten of the refusals check the inputs rather than the mathematics (issues #230 to #232): data outside the support
+of the family (a fraction for a Bernoulli or Poisson count, a Beta observation at 0 or 1, a Binomial count above
+`n`), a sample size that is not a count (`-1`, `1/2`), an empty data list, a count that disagrees with the data, and
+the information of several observations without independence. Their supported twins are in
+`packages/engine/tests/test_stat_observations.py`.

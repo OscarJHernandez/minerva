@@ -101,10 +101,18 @@ def test_statistics_refusals_carry_an_enumerated_reason(authed: TestClient) -> N
         (dict(family="normal", parameters={"sigma": "2"},
                 observation="x", sample_size="n", estimate=["mu"], action="mle", assumptions=A), "independence_not_declared"),
         (dict(family="uniform_0_theta", estimate=["theta"], action="fisher_information", assumptions={"theta": ["positive"]}), "regularity_not_satisfied"),
+        (dict(family="bernoulli", estimate=["p"], iid=True, data=["1/5", "4/5"], action="mle"), "observation_outside_support"),
+        (dict(family="poisson", estimate=["lam"], iid=True, data=["1/2", "3/2"], action="mle"), "observation_outside_support"),
+        (dict(family="bernoulli", estimate=["p"], data=["2"], action="log_likelihood"), "observation_outside_support"),
+        (dict(family="normal", parameters={"mu": "0"}, estimate=["sigma"], data=[], iid=True, action="fisher_information"), "no_observations"),
+        (dict(family="normal", parameters={"mu": "0"}, estimate=["sigma"], sample_size="-1", iid=True, action="fisher_information"), "sample_size_invalid"),
+        (dict(family="normal", parameters={"mu": "0"}, estimate=["sigma"], sample_size="4", data=["1", "2"], iid=True, action="fisher_information"), "sample_size_conflict"),
+        (dict(family="normal", parameters={"mu": "0"}, estimate=["sigma"], data=["1", "2"], action="fisher_information"), "independence_not_declared"),
     ]  # fmt: skip
     for body, reason in cases:
         out = post(authed, STATISTICS, **body)
         assert out["reason"] == reason and out["status"] != "ok", reason
+        assert not out["estimates"] and not out["matrix_text"], reason
 
 
 def test_validation_rejects_malformed_requests(authed: TestClient) -> None:

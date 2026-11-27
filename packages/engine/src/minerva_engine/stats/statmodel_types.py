@@ -22,6 +22,15 @@ class Refusal(MinervaMathError):
 
 
 @dataclass
+class Count:
+    """The validated count of observations: `n` is None for exactly one, an integer, or a positive-integer symbol."""
+
+    n: sp.Expr | None
+    values: list[sp.Rational] | None = None  # concrete data, every value inside the support
+    note: str = ""
+
+
+@dataclass
 class Reading:
     family: Family
     params: tuple[Param, ...]
@@ -29,3 +38,5 @@ class Reading:
         str, sp.Expr
     ]  # family parameter name -> the user's expression (or the unknown itself)
     conditions: list[Condition]
+    # the validated number of observations and data, filled by `read_model` for every action but moments
+    count: Count | None = None

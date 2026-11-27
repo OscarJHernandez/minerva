@@ -33,6 +33,9 @@ class Family:
     # support as (lower, upper) in terms of the family's parameter symbols; None: unbounded
     support: Callable[[dict[str, sp.Symbol]], tuple[sp.Expr, sp.Expr]]
     density: Callable[[dict[str, sp.Symbol], sp.Symbol], sp.Expr]
+    # whether the (lower, upper) ends are excluded from the support: Beta is (0, 1), Gamma (0, oo),
+    # Poisson and Binomial contain 0 (Binomial also n), Bernoulli contains 0 and 1
+    support_open: tuple[bool, bool] = (False, False)
     # False when the support depends on a parameter: differentiation under the integral sign is not allowed
     regular: bool = True
     symbols: dict[str, sp.Symbol] = field(default_factory=dict)
@@ -126,6 +129,7 @@ _register(
         parametrization={"default": (Param("alpha", "positive"), Param("beta", "positive"))},
         discrete=False,
         support=lambda s: (sp.Integer(0), sp.Integer(1)),
+        support_open=(True, True),
         density=lambda s, t: (
             t ** (s["alpha"] - 1) * (1 - t) ** (s["beta"] - 1) / sp.beta(s["alpha"], s["beta"])
         ),
@@ -141,6 +145,7 @@ _register(
         parametrization={"default": (Param("alpha", "positive"), Param("beta", "positive"))},
         discrete=False,
         support=lambda s: (sp.Integer(0), sp.oo),
+        support_open=(True, True),
         density=lambda s, t: (
             s["beta"] ** s["alpha"]
             * t ** (s["alpha"] - 1)
@@ -171,6 +176,7 @@ _register(
         parametrization={"default": (Param("theta", "positive"),)},
         discrete=False,
         support=lambda s: (sp.Integer(0), s["theta"]),
+        support_open=(True, True),
         density=lambda s, t: 1 / s["theta"],
         regular=False,
         symbols=_symbols(("theta", _POS)),

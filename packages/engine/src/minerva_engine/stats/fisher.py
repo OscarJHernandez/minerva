@@ -87,7 +87,9 @@ def run_fisher(
         )
     premises: list[str] = []
     factor: sp.Expr = sp.Integer(1)
-    if data.sample_size is not None:
+    count = reading.count
+    assert count is not None  # noqa: S101 - read_model fills it for every action but moments
+    if count.n is not None and count.n != 1:
         if data.iid is not True:
             raise Refusal(
                 Status.CONDITIONS_NOT_SATISFIED,
@@ -96,8 +98,7 @@ def run_fisher(
                 "independent and identically distributed; state that",
             )
         premises.append("the observations are independent and identically distributed")
-        n_flags = {"integer": True, "positive": True}
-        factor = sp.Symbol(data.sample_size, **n_flags)
+        factor = count.n
     if data.candidate is not None:
         return _check_candidate(data, reading, limits, factor, premises, deadline)
 
@@ -164,6 +165,7 @@ def _verify(
     factor: sp.Expr,
     deadline: float,
 ) -> tuple[StatCheck, StatCheck]:
+    count_symbols = [s for s in factor.free_symbols if isinstance(s, sp.Symbol)]
     form = StatCheck(
         kind="information",
         method="the information against the variance of the score (quadrature or summation, "
@@ -180,8 +182,14 @@ def _verify(
         if reference is None:
             continue
         numeric, means = reference
-        # the sample size is not a parameter: give it a value of its own at each point
+        # only a symbolic count is sampled (it is not a parameter): a count that was supplied is used as is
         unbound = (info.free_symbols | factor.free_symbols) - set(point)
+        if unbound - set(count_symbols):
+            raise Refusal(
+                Status.PARSE_ERROR,
+                "parse_error",
+                "the matrix has a symbol that is neither a parameter of the model nor the sample size",
+            )
         point = {
             **point,
             **{
@@ -233,6 +241,11 @@ def _check_candidate(
             info[a, b] = parse_expression(
                 ExpressionInput(input=text, format="text", assumptions=data.assumptions), limits
             )
+    # a parsed `n` has no assumptions: it is the sample size symbol of the request, not a stranger
+    counts = {s.name: s for s in factor.free_symbols if isinstance(s, sp.Symbol)}
+    info = info.xreplace(
+        {s: counts[s.name] for s in info.free_symbols if s.name in counts and s != counts[s.name]}
+    )
     form, mean = _verify(data, reading, info, factor, deadline)
     if not (form.passed and mean.passed):
         return StatModelResult(

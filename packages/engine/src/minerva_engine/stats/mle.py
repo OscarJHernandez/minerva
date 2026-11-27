@@ -35,6 +35,7 @@ from . import likelihood as lh
 from .domain import decide
 from .models import Estimate, Optimum, StatCheck, StatModelInput, StatModelResult, StatStep
 from .numeric import sample_parameters
+from .observations import fits_at
 from .statmodel_types import Reading, Refusal
 
 Point = dict[sp.Symbol, Any]
@@ -170,7 +171,11 @@ def _points(
     """Parameter points; with a single concrete data set there are more of them."""
     if prep.lk.obs.values is not None:
         count = max(count, 4)
-    return sample_parameters(prep.reading.exprs, prep.reading.params, rng, count)
+    points = sample_parameters(prep.reading.exprs, prep.reading.params, rng, 3 * count)
+    values = prep.lk.obs.values
+    if values is not None:  # data a sampled bound (Binomial n) would exclude have likelihood zero
+        points = [p for p in points if fits_at(values, prep.reading, p[0])]
+    return points[:count]
 
 
 # ---------------------------------------------------------------------------------- checks

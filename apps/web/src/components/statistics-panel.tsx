@@ -24,6 +24,13 @@ export const REASON_TEXT: Record<string, string> = {
   assumptions_insufficient: "The declared assumptions are not enough to decide this.",
   independence_not_declared:
     "Several observations were given without saying they are independent. Minerva never assumes independence.",
+  sample_size_invalid:
+    "The number of observations must be a whole number of at least 1, or the name of one such as n.",
+  sample_size_conflict:
+    "The stated number of observations disagrees with the data, which determine it.",
+  no_observations: "The list of observations is empty.",
+  observation_outside_support:
+    "An observation lies outside the support of the family (for example a fraction for a Poisson count), so nothing is computed.",
   regularity_not_satisfied:
     "The support depends on the parameter, so there is no score or Fisher information here.",
   convergence_not_established:

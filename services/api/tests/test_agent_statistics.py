@@ -81,6 +81,39 @@ def test_an_inadmissible_estimate_is_not_invented(ctx) -> None:
     assert "no maximum-likelihood estimate exists" in out.for_model
 
 
+@pytest.mark.parametrize(
+    "request_",
+    [
+        {"family": "bernoulli", "estimate": ["p"], "iid": True, "data": ["1/5", "4/5"]},
+        {"family": "poisson", "estimate": ["lam"], "iid": True, "data": ["1/2", "3/2"]},
+        {"family": "bernoulli", "estimate": ["p"], "iid": True, "data": ["2", "1"]},
+        {"family": "beta", "estimate": ["alpha"], "parameters": {"beta": "2"}, "iid": True, "data": ["0", "1/2"]},
+        {"family": "binomial", "estimate": ["p"], "parameters": {"n": "5"}, "iid": True, "data": ["6", "1"]},
+    ],
+)  # fmt: skip
+def test_observations_outside_the_support_give_no_estimate_and_no_formula(ctx, request_) -> None:
+    out = execute("statistical_model", {"observation": "x", "action": "mle", **request_}, ctx)
+    assert out.status == "conditions_not_satisfied"
+    assert "observation_outside_support" in out.for_model
+    assert out.known_latex == [] and out.quoted_latex == []
+    assert "result=none" in out.for_model
+
+
+def test_fisher_information_of_the_data_is_conditional_and_counts_them(ctx) -> None:
+    args = {
+        "family": "normal",
+        "parameters": {"sigma": "1"},
+        "estimate": ["mu"],
+        "action": "fisher_information",
+        "data": ["1", "2", "3", "4"],
+    }
+    refused = execute("statistical_model", args, ctx)
+    assert refused.status == "conditions_not_satisfied" and "independent" in refused.for_model
+    out = execute("statistical_model", {**args, "iid": True}, ctx)
+    assert out.status == "ok" and "HOLDS GIVEN" in out.for_model
+    assert not out.known_latex  # a conditional result is quoted, never marked verified
+
+
 def test_moments_are_verified_results_not_conditional(ctx) -> None:
     out = execute(
         "statistical_model",

@@ -99,7 +99,13 @@ class StatModelArgs(BaseModel):
         default=None, max_length=32, description="Name of the data, e.g. x (x_1 ... x_n)"
     )
     sample_size: str | None = Field(
-        default=None, max_length=32, description="Name of the number of observations, e.g. n"
+        default=None,
+        max_length=32,
+        description="The number of observations: the NAME of a whole number (a letter such as n, never "
+        "the name of the data or of a parameter) or a whole number of at least 1 as digits (4). Never "
+        "an expression (n+1, 2n), a fraction or a negative number: those are refused. With `data`, "
+        "leave it out (the data determine the count) or give exactly their number. A number without "
+        "`data` is accepted only for fisher_information. Several observations need iid.",
     )
     iid: bool | None = Field(
         default=None,
@@ -129,7 +135,11 @@ class StatModelArgs(BaseModel):
     data: list[str] | None = Field(
         default=None,
         max_length=64,
-        description="Concrete observations, only if the USER gave them (numbers as text).",
+        description="Concrete observations, only if the USER gave them (numbers as text, never an empty "
+        "list). Each must lie in the support of the family (Bernoulli 0 or 1, Poisson and Binomial "
+        "integers from 0, Binomial at most n, Beta strictly between 0 and 1, Gamma above 0): otherwise "
+        "the tool refuses with observation_outside_support and no estimate exists. They also fix the "
+        "number of observations (fisher_information counts them).",
     )
     assumptions: dict[str, list[str]] = Field(
         default_factory=dict,
