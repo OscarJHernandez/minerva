@@ -4,9 +4,9 @@
       "id": "statistics",
       "title": "Statistical derivations",
       "what": "Sums and products, expectations, moments of probability families, maximum-likelihood estimators, Fisher information, Bayesian posteriors and matrix gradients, against hand-written references.",
-      "total": 108,
+      "total": 118,
       "correct": 51,
-      "refused": 28,
+      "refused": 38,
       "rejected": 29,
       "pending": 0,
       "sources": [

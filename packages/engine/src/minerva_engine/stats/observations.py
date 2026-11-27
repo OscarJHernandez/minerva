@@ -151,6 +151,16 @@ def _check_support(
                         established=False,
                         how="the upper end of the support is a symbol; the data cannot be "
                         "compared with it",
+                        # a known parameter: the result then holds only given it (conditional)
+                        parameter=next(
+                            (
+                                n
+                                for n, s in family.symbols.items()
+                                if s in family.support(family.symbols)[1].free_symbols
+                            ),
+                            None,
+                        ),
+                        role="given",
                     )
                 )
     return conditions

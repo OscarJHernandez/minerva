@@ -95,6 +95,7 @@ def test_a_binomial_count_against_a_symbolic_n_is_an_unestablished_condition(eng
     )
     assert r.status is Status.OK
     assert any(not c.established and "every observation" in c.latex for c in r.conditions)
+    assert r.evidence == "conditional" and r.premises  # holds only given the symbolic bound
 
 
 @pytest.mark.parametrize("data", [["0", "1/2"], ["1/4", "1"]])
